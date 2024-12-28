@@ -10,8 +10,8 @@ from src.process_input import send_audio_frames
 
 def main():
     fmt = pyaudio.paInt16
-    #rate = 16000
-    rate = 44100
+    rate = 16000
+    #rate = 44100 # native sampling rate of audio devices
     channels = 1
     chunk = 1024
     frame_q = queue.Queue()
