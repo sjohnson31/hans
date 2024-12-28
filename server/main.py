@@ -1,3 +1,4 @@
+import os
 import socket
 import struct
 import sys
@@ -24,7 +25,7 @@ def write_audio(frames):
 
 def main():
     udp_ip = '0.0.0.0'
-    udp_port = 8888
+    udp_port = int(os.environ['SERVER_PORT'])
     header_fmt = f'<hLH'
     header_size = struct.calcsize(header_fmt)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
