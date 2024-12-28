@@ -1,6 +1,7 @@
 import queue
 import socket
 import threading
+import time
 
 import pyaudio
 
@@ -9,6 +10,7 @@ from src.process_input import send_audio_frames
 
 def main():
     fmt = pyaudio.paInt16
+    #rate = 16000
     rate = 44100
     channels = 1
     chunk = 1024
@@ -16,7 +18,8 @@ def main():
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_ip = '192.168.1.200'
     server_port = 8888
-    process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port), daemon=True)
+    trigger_transcription_event = threading.Event()
+    process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port, trigger_transcription_event), daemon=True)
     process_thread.start()
 
     audio = pyaudio.PyAudio()
@@ -30,8 +33,12 @@ def main():
 
     try:
         in_dev = audio.open(format=fmt, channels=channels, rate=rate, input=True, input_device_index=0, frames_per_buffer=chunk, stream_callback=stream_cb)
+        start_time = time.monotonic()
         while process_thread.is_alive():
             process_thread.join(0.5)
+            if time.monotonic() - start_time > 5:
+                trigger_transcription_event.set()
+                start_time = time.monotonic()
     finally:
         in_dev.stop_stream()
         in_dev.close()
