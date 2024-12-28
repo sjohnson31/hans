@@ -1,6 +1,10 @@
-import wave
+import queue
+import socket
+import threading
 
 import pyaudio
+
+from src.process_input import send_audio_frames
 
 
 def main():
@@ -8,30 +12,42 @@ def main():
     rate = 44100
     channels = 1
     chunk = 1024
-    record_seconds = 2
-    frames = []
+    frame_q = queue.Queue()
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_ip = '192.168.1.200'
+    server_port = 8888
+    process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port), daemon=True)
+    process_thread.start()
 
     audio = pyaudio.PyAudio()
 
-    in_dev = audio.open(format=fmt, channels=channels, rate=rate, input=True, input_device_index=0, frames_per_buffer=chunk)
+    def stream_cb(in_data, frame_count: int, time_info, status_flags):
+        out_data = None
+        flag = pyaudio.paContinue
+        #print(len(in_data))
+        frame_q.put(in_data)
+        return (out_data, flag)
 
-    print('Recording start')
-    for i in range(0, int(rate / chunk * record_seconds)):
-        frames.append(in_dev.read(chunk))
-    print('Recording end')
+    try:
+        in_dev = audio.open(format=fmt, channels=channels, rate=rate, input=True, input_device_index=0, frames_per_buffer=chunk, stream_callback=stream_cb)
+        while process_thread.is_alive():
+            process_thread.join(0.5)
+    finally:
+        in_dev.stop_stream()
+        in_dev.close()
+        audio.terminate()
 
-    for frame in frames:
-        print(frame)
-    
-    in_dev.stop_stream()
-    in_dev.close()
-    audio.terminate()
+        #with wave.open('testing.wav', 'wb') as f:
+            #f.setnchannels(channels)
+            #f.setsampwidth(audio.get_sample_size(fmt))
+            #f.setframerate(rate)
+            #f.writeframes(b''.join(frames))
 
-    with wave.open('testing.wav', 'wb') as f:
-        f.setnchannels(channels)
-        f.setsampwidth(audio.get_sample_size(fmt))
-        f.setframerate(rate)
-        f.writeframes(b''.join(frames))
+    #print('Recording start')
+    #for i in range(0, int(rate / chunk * record_seconds)):
+        #frames.append(in_dev.read(chunk))
+    #print('Recording end')
+
 
 
 if __name__ == '__main__':
