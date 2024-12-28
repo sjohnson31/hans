@@ -4,7 +4,7 @@ import pyaudio
 
 
 def main():
-    fmt = pyaudio.paFloat32
+    fmt = pyaudio.paInt16
     rate = 44100
     channels = 1
     chunk = 1024
