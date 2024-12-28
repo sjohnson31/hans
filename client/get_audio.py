@@ -1,3 +1,4 @@
+import os
 import queue
 import socket
 import threading
@@ -18,8 +19,9 @@ def main():
     chunk = 1024
     frame_q = queue.Queue()
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_ip = '192.168.1.200'
-    server_port = 8888
+    server_ip = os.environ['SERVER_ADDRESS']
+    server_port = int(os.environ['SERVER_PORT'])
+    input_device_index = int(os.environ['INPUT_DEVICE_INDEX'])
     trigger_transcription_event = threading.Event()
     process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port, trigger_transcription_event), daemon=True)
     process_thread.start()
@@ -37,7 +39,7 @@ def main():
         return (out_data, flag)
 
     try:
-        in_dev = audio.open(format=fmt, channels=channels, rate=rate, input=True, input_device_index=8, frames_per_buffer=chunk, stream_callback=stream_cb)
+        in_dev = audio.open(format=fmt, channels=channels, rate=rate, input=True, input_device_index=input_device_index, frames_per_buffer=chunk, stream_callback=stream_cb)
         start_time = time.monotonic()
         while process_thread.is_alive():
             process_thread.join(0.5)
