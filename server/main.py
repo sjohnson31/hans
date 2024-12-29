@@ -9,6 +9,7 @@ from pywhispercpp.model import Model
 from silero_vad import (load_silero_vad, VADIterator)
 
 from src.voice_detector import VoiceDetector
+from src.command_runner import run_command
 
 MAX_COUNTER = 4_294_967_295
 FRAME_INDICATOR = 1
@@ -38,7 +39,7 @@ def main():
     frames = bytearray()
     model = Model('base.en')
     last_frame_num = None
-    last_frame_was_voice = False
+    num_voiceless_frames_seen = 0
     while True:
         data, _ = sock.recvfrom(MAX_PACKET_SIZE)
         indicator, frame_num, audio_length = struct.unpack_from(header_fmt, data)
@@ -53,16 +54,24 @@ def main():
             # OR MAYBE DO?!?!?
             frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
             if frame_is_voice:
+                num_voiceless_frames_seen = 0
+            else:
+                num_voiceless_frames_seen += 1
+
+            if frame_is_voice or (frames and num_voiceless_frames_seen < 5):
                 frames.extend(audio_bytes)
-            if not frame_is_voice and last_frame_was_voice:
+
+            if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
+                print("decided to transcribe")
                 audio_data = np.frombuffer(frames, np.int16).astype(np.float32) / np.iinfo(np.int16).max
                 # Make the audio at least one second long
                 audio_data = np.concatenate([audio_data, np.zeros((int(16000) + 10))])
                 segments = model.transcribe(audio_data)
                 for segment in segments:
+                    run_command(segment.text)
                     print(segment.text)
                 frames = bytearray()
-            last_frame_was_voice = frame_is_voice
+
 
         elif indicator == END_INDICATOR:
             print('End indicator recieved')

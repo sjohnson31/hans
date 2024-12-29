@@ -23,7 +23,7 @@ class VoiceDetector:
         if len(chunk) != 1024:
             raise RuntimeError('Chunks must be exactly 1024 bytes')
 
-        torch_chunk = torch.from_numpy(np.frombuffer(chunk, np.int16))
+        torch_chunk = torch.from_numpy(np.frombuffer(chunk, np.int16).copy())
 
         speech_prob = self._model(torch_chunk, SAMPLING_RATE).item()
         return speech_prob > CONFIDENCE_CUTOFF
