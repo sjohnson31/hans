@@ -33,10 +33,3 @@ def send_audio_frames(frame_q: queue.Queue, server_sock: socket.socket, server_a
                 frame_num = 0
             else:
                 frame_num += 1
-        if trigger_transcription_event.is_set():
-            server_sock.sendto(struct.pack(end_packet_format, END_INDICATOR, frame_num, 0), (server_addr, server_port))
-            trigger_transcription_event.clear()
-            if frame_num >= MAX_COUNTER:
-                frame_num = 0
-            else:
-                frame_num += 1

@@ -12,6 +12,7 @@ from src.process_input import send_audio_frames
 
 def main():
     fmt = pyaudio.paInt16
+    # TODO: Just use the default rate of the microphone
     rate = 48000
     #rate = 44100 # native sampling rate of audio devices
     channels = 1
@@ -41,25 +42,10 @@ def main():
         start_time = time.monotonic()
         while process_thread.is_alive():
             process_thread.join(0.5)
-            if time.monotonic() - start_time > 5:
-                trigger_transcription_event.set()
-                start_time = time.monotonic()
     finally:
         in_dev.stop_stream()
         in_dev.close()
         audio.terminate()
-
-        #with wave.open('testing.wav', 'wb') as f:
-            #f.setnchannels(channels)
-            #f.setsampwidth(audio.get_sample_size(fmt))
-            #f.setframerate(rate)
-            #f.writeframes(b''.join(frames))
-
-    #print('Recording start')
-    #for i in range(0, int(rate / chunk * record_seconds)):
-        #frames.append(in_dev.read(chunk))
-    #print('Recording end')
-
 
 
 if __name__ == '__main__':
