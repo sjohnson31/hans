@@ -16,7 +16,6 @@ def send_audio_frames(frame_q: queue.Queue, server_sock: socket.socket, server_a
     audio_data = bytearray()
 
     fmt = f'<hLH{CHUNK_SIZE}h'
-    end_packet_format = '<hLH'
 
     while True:
         frame = frame_q.get()

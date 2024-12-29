@@ -1,13 +1,16 @@
 import os
+import queue
 import socket
 import struct
 import sys
+import threading
 import wave
 
 import numpy as np
 from pywhispercpp.model import Model
 from silero_vad import load_silero_vad
 
+from src.message_sender import send_audio_message
 from src.voice_detector import VoiceDetector
 from src.command_runner import run_command
 
@@ -29,22 +32,30 @@ def write_audio(frames):
 def main():
     udp_ip = '0.0.0.0'
     udp_port = int(os.environ['SERVER_PORT'])
-    header_fmt = '<hLH'
-    header_size = struct.calcsize(header_fmt)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((udp_ip, udp_port))
+
     vad_model = load_silero_vad()
     voice_detector = VoiceDetector(vad_model)
 
+    header_fmt = '<hLH'
+    header_size = struct.calcsize(header_fmt)
     frames = bytearray()
     model = Model('base.en')
+
     last_frame_num = None
     num_voiceless_frames_seen = 0
+
+    message_q = queue.Queue()
+    sender_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sender_t = threading.Thread(target=send_audio_message, args=[message_q, sock], daemon=True)
+    sender_t.start()
 
     print('Server ready')
 
     while True:
-        data, _ = sock.recvfrom(MAX_PACKET_SIZE)
+        data, sender_addr = sock.recvfrom(MAX_PACKET_SIZE)
+        sender_addr = (sender_addr[0], udp_port)
         indicator, frame_num, audio_length = struct.unpack_from(header_fmt, data)
         audio_fmt = f'<{audio_length}h'
         audio_bytes = bytes(struct.unpack_from(audio_fmt, data, offset=header_size))
@@ -74,7 +85,7 @@ def main():
                 audio_data = np.concatenate([audio_data, np.zeros((int(16000) + 10))])
                 segments = model.transcribe(audio_data)
                 for segment in segments:
-                    run_command(segment.text)
+                    run_command(segment.text, message_q, sender_addr)
                     print(segment.text)
                 frames = bytearray()
 

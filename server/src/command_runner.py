@@ -1,6 +1,8 @@
+import queue
 import re
 import threading
 import time
+from typing import Any
 from durations_nlp import Duration
 from number_parser import parse as replace_textual_numbers
 
@@ -8,10 +10,16 @@ from number_parser import parse as replace_textual_numbers
 # will turn it into a number
 SECONDS_UNITS_REPLACEMENT = '__SECONDS_UNITS__'
 
-def run_command(command_text: str) -> bool:
-    return run_timer_command(command_text)
+def run_command(command_text: str, message_q: queue.Queue, sender_addr: Any) -> bool:
+    return run_timer_command(command_text, message_q, sender_addr)
 
-def run_timer_command(command_text: str) -> bool:
+
+def dumb_timer(seconds: int, message_q: queue.Queue, sender_addr: Any):
+    time.sleep(seconds)
+    message_q.put(('Time\'s up', sender_addr))
+
+
+def run_timer_command(command_text: str, message_q: queue.Queue, sender_addr: Any) -> bool:
     command_text = replace_textual_numbers(command_text.replace('-', ' ').replace('.', '').replace('second', SECONDS_UNITS_REPLACEMENT))
     match = re.search('\d', command_text)
     if not match:
@@ -26,15 +34,15 @@ def run_timer_command(command_text: str) -> bool:
         print(f'Failed {start=}, {end=}')
         return False
 
-    duration_words = command_text[start:end].replace(SECONDS_UNITS_REPLACEMENT, 'second')
-    print(f'Success {duration_words=}')
-    duration = Duration(duration_words)
-    print(f'Double success {duration=}')
+    try:
+        duration_words = command_text[start:end].replace(SECONDS_UNITS_REPLACEMENT, 'second')
+        print(f'Success {duration_words=}')
+        duration = Duration(duration_words)
+        print(f'Double success {duration=}')
+    except:
+        print('Failed to get duration')
+        return False
 
-    def dumb_timer(seconds):
-        time.sleep(seconds)
-        print('Times up')
-
-    t = threading.Thread(target=dumb_timer, args=[duration.to_seconds()], daemon=True)
+    t = threading.Thread(target=dumb_timer, args=[duration.to_seconds(), message_q, sender_addr], daemon=True)
     t.start()
     return True

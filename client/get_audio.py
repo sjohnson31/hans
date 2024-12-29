@@ -8,6 +8,7 @@ import pyaudio
 import librosa
 import numpy as np
 
+from src.message_listener import listen
 from src.process_input import send_audio_frames
 
 def main():
@@ -25,6 +26,9 @@ def main():
     trigger_transcription_event = threading.Event()
     process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port, trigger_transcription_event), daemon=True)
     process_thread.start()
+
+    listener_thread = threading.Thread(target=listen, daemon=True)
+    listener_thread.start()
 
     audio = pyaudio.PyAudio()
     # for i in range(audio.get_device_count()):
