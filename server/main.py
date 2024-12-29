@@ -26,7 +26,7 @@ def write_audio(frames):
 def main():
     udp_ip = '0.0.0.0'
     udp_port = int(os.environ['SERVER_PORT'])
-    header_fmt = f'<hLH'
+    header_fmt = '<hLH'
     header_size = struct.calcsize(header_fmt)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((udp_ip, udp_port))
@@ -43,9 +43,7 @@ def main():
         audio_fmt = f'<{audio_length}h'
         print(f'indicator={indicator}, frame_num={frame_num}, audio_length={audio_length}, len={len(data)}')
         audio_bytes = bytes(struct.unpack_from(audio_fmt, data, offset=header_size))
-        print(audio_bytes)
 
-        print(f'Received frame: {frame_num}')
         if last_frame_num is not None:
             if frame_num != last_frame_num + 1 or (last_frame_num == MAX_COUNTER and frame_num != 0):
                 print('WARNING: Received frames out of order')
@@ -54,7 +52,7 @@ def main():
         elif indicator == END_INDICATOR:
             print('End indicator recieved')
             #segments = model.transcribe(np.frombuffer(b''.join(frames), np.int16))
-            write_audio(np.frombuffer(b''.join(frames), np.int16).tobytes())
+            write_audio(b''.join(frames))
             segments = model.transcribe('testing.wav')
             for segment in segments:
                 print(segment.text)
