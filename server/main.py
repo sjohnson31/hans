@@ -4,8 +4,6 @@ import struct
 import sys
 import wave
 
-import numpy as np
-
 from pywhispercpp.model import Model
 
 MAX_COUNTER = 4_294_967_295
@@ -31,7 +29,7 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((udp_ip, udp_port))
 
-    frames = []
+    frames = bytearray()
     model = Model('base.en')
     last_frame_num = None
     while True:
@@ -45,15 +43,15 @@ def main():
             if frame_num != last_frame_num + 1 or (last_frame_num == MAX_COUNTER and frame_num != 0):
                 print('WARNING: Received frames out of order')
         if indicator == FRAME_INDICATOR:
-            frames.append(audio_bytes)
+            frames.extend(audio_bytes)
         elif indicator == END_INDICATOR:
             print('End indicator recieved')
-            write_audio(b''.join(frames))
+            write_audio(frames)
             segments = model.transcribe('testing.wav')
             for segment in segments:
                 print(segment.text)
             sys.exit(0)
-            frames = np.array([])
+            frames = bytearray()
         last_frame_num = frame_num
 
 
