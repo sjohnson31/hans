@@ -26,5 +26,4 @@ class VoiceDetector:
         torch_chunk = torch.from_numpy(np.frombuffer(chunk, np.int16))
 
         speech_prob = self._model(torch_chunk, SAMPLING_RATE).item()
-        print(f'{speech_prob=}')
         return speech_prob > CONFIDENCE_CUTOFF

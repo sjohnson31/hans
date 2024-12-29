@@ -4,6 +4,7 @@ import struct
 import sys
 import wave
 
+import numpy as np
 from pywhispercpp.model import Model
 from silero_vad import (load_silero_vad, VADIterator)
 
@@ -42,24 +43,25 @@ def main():
         data, _ = sock.recvfrom(MAX_PACKET_SIZE)
         indicator, frame_num, audio_length = struct.unpack_from(header_fmt, data)
         audio_fmt = f'<{audio_length}h'
-        print(f'indicator={indicator}, frame_num={frame_num}, audio_length={audio_length}, len={len(data)}')
         audio_bytes = bytes(struct.unpack_from(audio_fmt, data, offset=header_size))
 
         if last_frame_num is not None:
             if frame_num != last_frame_num + 1 or (last_frame_num == MAX_COUNTER and frame_num != 0):
                 print('WARNING: Received frames out of order')
         if indicator == FRAME_INDICATOR:
-            frames.extend(audio_bytes)
             #TODO: Collect frames until we have enough, don't assume a frame is perfect
             # OR MAYBE DO?!?!?
             frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
-            print(f'{frame_is_voice=}')
+            if frame_is_voice:
+                frames.extend(audio_bytes)
             if not frame_is_voice and last_frame_was_voice:
-                write_audio(frames)
-                segments = model.transcribe('testing.wav')
+                audio_data = np.frombuffer(frames, np.int16).astype(np.float32) / np.iinfo(np.int16).max
+                # Make the audio at least one second long
+                audio_data = np.concatenate([audio_data, np.zeros((int(16000) + 10))])
+                segments = model.transcribe(audio_data)
                 for segment in segments:
                     print(segment.text)
-                sys.exit(0)
+                frames = bytearray()
             last_frame_was_voice = frame_is_voice
 
         elif indicator == END_INDICATOR:
