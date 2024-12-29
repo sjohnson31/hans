@@ -5,11 +5,10 @@ import threading
 import time
 
 import pyaudio
-
-from src.process_input import send_audio_frames
 import librosa
 import numpy as np
 
+from src.process_input import send_audio_frames
 
 def main():
     fmt = pyaudio.paInt16
@@ -33,7 +32,6 @@ def main():
     def stream_cb(in_data, frame_count: int, time_info, status_flags):
         out_data = None
         flag = pyaudio.paContinue
-        #print(len(in_data))
         new_sample = librosa.resample(np.frombuffer(in_data, np.int16).astype(np.float32), orig_sr=rate, target_sr=16000)
         frame_q.put(new_sample.astype(np.int16).tobytes())
         return (out_data, flag)
