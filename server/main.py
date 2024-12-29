@@ -33,9 +33,6 @@ def main():
 
     frames = []
     model = Model('base.en')
-    #segments = model.transcribe('../whisper.cpp/5_second_timer.wav')
-    #for i, segment in enumerate(segments):
-    #    print(f'{i}: {segment.text}')
     last_frame_num = None
     while True:
         data, _ = sock.recvfrom(MAX_PACKET_SIZE)
@@ -51,7 +48,6 @@ def main():
             frames.append(audio_bytes)
         elif indicator == END_INDICATOR:
             print('End indicator recieved')
-            #segments = model.transcribe(np.frombuffer(b''.join(frames), np.int16))
             write_audio(b''.join(frames))
             segments = model.transcribe('testing.wav')
             for segment in segments:
