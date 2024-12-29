@@ -18,7 +18,6 @@ def send_audio_frames(frame_q: queue.Queue, server_sock: socket.socket, server_a
         fmt = f'<hLH{frame_len}h'
         end_packet_format = '<hLH'
         print(f'Got frame, sending')
-        print(frame)
         server_sock.sendto(struct.pack(fmt, FRAME_INDICATOR, frame_num, frame_len, *frame), (server_addr, server_port))
         if frame_num >= MAX_COUNTER:
             frame_num = 0
