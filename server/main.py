@@ -6,7 +6,7 @@ import wave
 
 import numpy as np
 from pywhispercpp.model import Model
-from silero_vad import (load_silero_vad, VADIterator)
+from silero_vad import load_silero_vad
 
 from src.voice_detector import VoiceDetector
 from src.command_runner import run_command
@@ -40,6 +40,9 @@ def main():
     model = Model('base.en')
     last_frame_num = None
     num_voiceless_frames_seen = 0
+
+    print('Server ready')
+
     while True:
         data, _ = sock.recvfrom(MAX_PACKET_SIZE)
         indicator, frame_num, audio_length = struct.unpack_from(header_fmt, data)
@@ -48,7 +51,10 @@ def main():
 
         if last_frame_num is not None:
             if frame_num != last_frame_num + 1 or (last_frame_num == MAX_COUNTER and frame_num != 0):
-                print('WARNING: Received frames out of order')
+                print('WARNING: frame {frame_num} received out of order')
+                last_frame_num = frame_num
+                continue
+
         if indicator == FRAME_INDICATOR:
             #TODO: Collect frames until we have enough, don't assume a frame is perfect
             # OR MAYBE DO?!?!?
@@ -62,7 +68,7 @@ def main():
                 frames.extend(audio_bytes)
 
             if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
-                print("decided to transcribe")
+                print('decided to transcribe')
                 audio_data = np.frombuffer(frames, np.int16).astype(np.float32) / np.iinfo(np.int16).max
                 # Make the audio at least one second long
                 audio_data = np.concatenate([audio_data, np.zeros((int(16000) + 10))])
@@ -72,15 +78,6 @@ def main():
                     print(segment.text)
                 frames = bytearray()
 
-
-        elif indicator == END_INDICATOR:
-            print('End indicator recieved')
-            write_audio(frames)
-            segments = model.transcribe('testing.wav')
-            for segment in segments:
-                print(segment.text)
-            sys.exit(0)
-            frames = bytearray()
         last_frame_num = frame_num
 
 

@@ -1,4 +1,6 @@
 import re
+import threading
+import time
 from durations_nlp import Duration
 from number_parser import parse as replace_textual_numbers
 
@@ -10,10 +12,7 @@ def run_command(command_text: str) -> bool:
     return run_timer_command(command_text)
 
 def run_timer_command(command_text: str) -> bool:
-    command_text = command_text.replace('-', ' ')
-    command_text = command_text.replace('.', '')
-    command_text = command_text.replace('second', SECONDS_UNITS_REPLACEMENT)
-    command_text = replace_textual_numbers(command_text)
+    command_text = replace_textual_numbers(command_text.replace('-', ' ').replace('.', '').replace('second', SECONDS_UNITS_REPLACEMENT))
     match = re.search('\d', command_text)
     if not match:
         return False
@@ -31,4 +30,11 @@ def run_timer_command(command_text: str) -> bool:
     print(f'Success {duration_words=}')
     duration = Duration(duration_words)
     print(f'Double success {duration=}')
+
+    def dumb_timer(seconds):
+        time.sleep(seconds)
+        print('Times up')
+
+    t = threading.Thread(target=dumb_timer, args=[duration.to_seconds()], daemon=True)
+    t.start()
     return True

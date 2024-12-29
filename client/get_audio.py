@@ -39,7 +39,6 @@ def main():
 
     try:
         in_dev = audio.open(format=fmt, channels=channels, rate=rate, input=True, input_device_index=input_device_index, frames_per_buffer=chunk, stream_callback=stream_cb)
-        start_time = time.monotonic()
         while process_thread.is_alive():
             process_thread.join(0.5)
     finally:
