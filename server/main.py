@@ -5,6 +5,9 @@ import sys
 import wave
 
 from pywhispercpp.model import Model
+from silero_vad import (load_silero_vad, VADIterator)
+
+from src.voice_detector import VoiceDetector
 
 MAX_COUNTER = 4_294_967_295
 FRAME_INDICATOR = 1
@@ -28,10 +31,13 @@ def main():
     header_size = struct.calcsize(header_fmt)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((udp_ip, udp_port))
+    vad_model = load_silero_vad()
+    voice_detector = VoiceDetector(vad_model)
 
     frames = bytearray()
     model = Model('base.en')
     last_frame_num = None
+    last_frame_was_voice = False
     while True:
         data, _ = sock.recvfrom(MAX_PACKET_SIZE)
         indicator, frame_num, audio_length = struct.unpack_from(header_fmt, data)
@@ -44,6 +50,18 @@ def main():
                 print('WARNING: Received frames out of order')
         if indicator == FRAME_INDICATOR:
             frames.extend(audio_bytes)
+            #TODO: Collect frames until we have enough, don't assume a frame is perfect
+            # OR MAYBE DO?!?!?
+            frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
+            print(f'{frame_is_voice=}')
+            if not frame_is_voice and last_frame_was_voice:
+                write_audio(frames)
+                segments = model.transcribe('testing.wav')
+                for segment in segments:
+                    print(segment.text)
+                sys.exit(0)
+            last_frame_was_voice = frame_is_voice
+
         elif indicator == END_INDICATOR:
             print('End indicator recieved')
             write_audio(frames)
