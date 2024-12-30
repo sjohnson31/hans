@@ -8,7 +8,7 @@ import numpy as np
 
 def send_audio_message(message_q: queue.Queue, sock: socket.socket, tts) -> NoReturn:
     while True:
-        message, sender_addr = message_q.get()
+        message, _ = message_q.get()
         print(f'Got message {message}, sending to client')
         audio_raw = np.array(tts.tts(text=message), dtype=np.float32)
         audio_norm = audio_raw * (32767 / max(0.01, np.max(np.abs(audio_raw))))

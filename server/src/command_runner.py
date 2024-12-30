@@ -10,6 +10,15 @@ from number_parser import parse as replace_textual_numbers
 # will turn it into a number
 SECONDS_UNITS_REPLACEMENT = '__SECONDS_UNITS__'
 
+
+def make_duration_string(duration: Duration) -> str:
+    if duration.to_minutes() < 1:
+        return f'{int(duration.to_seconds())} second'
+    minutes = int(duration.to_seconds() // 60)
+    seconds = int(duration.to_seconds() % 60)
+    return f'{minutes} minute and {seconds} second'
+
+
 def run_command(command_text: str, message_q: queue.Queue, sender_addr: Any) -> bool:
     return run_timer_command(command_text, message_q, sender_addr)
 
@@ -43,6 +52,7 @@ def run_timer_command(command_text: str, message_q: queue.Queue, sender_addr: An
         print('Failed to get duration')
         return False
 
+    message_q.put((f'Setting a {make_duration_string(duration)} timer', sender_addr))
     t = threading.Thread(target=dumb_timer, args=[duration.to_seconds(), message_q, sender_addr], daemon=True)
     t.start()
     return True
