@@ -39,3 +39,4 @@ def inner_listen(play_cb: Callable[[bytes], NoneType], port: int) -> None:
                     message_size = -1
                     print('Done getting message')
                     play_cb(bytes(audio_buf))
+                    audio_buf = bytearray()
