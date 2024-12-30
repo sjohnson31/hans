@@ -1,3 +1,4 @@
+import datetime
 import queue
 import re
 import threading
@@ -52,7 +53,9 @@ def run_timer_command(command_text: str, message_q: queue.Queue, sender_addr: An
         print('Failed to get duration')
         return False
 
-    message_q.put((f'Setting a {make_duration_string(duration)} timer', sender_addr))
+    dur_str = make_duration_string(duration)
+    print(f'Setting a timer for {dur_str} at {datetime.now()}')
+    message_q.put((f'Setting a {dur_str} timer', sender_addr))
     t = threading.Thread(target=dumb_timer, args=[duration.to_seconds(), message_q, sender_addr], daemon=True)
     t.start()
     return True
