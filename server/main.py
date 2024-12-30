@@ -6,7 +6,9 @@ import sys
 import threading
 import wave
 
+import torch
 import numpy as np
+from TTS.api import TTS
 from pywhispercpp.model import Model
 from silero_vad import load_silero_vad
 
@@ -38,6 +40,10 @@ def main():
     vad_model = load_silero_vad()
     voice_detector = VoiceDetector(vad_model)
 
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    tts_model = 'tts_models/en/jenny/jenny'
+    tts = TTS(tts_model).to(device)
+
     header_fmt = '<hLH'
     header_size = struct.calcsize(header_fmt)
     frames = bytearray()
@@ -47,8 +53,9 @@ def main():
     num_voiceless_frames_seen = 0
 
     message_q = queue.Queue()
-    sender_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sender_t = threading.Thread(target=send_audio_message, args=[message_q, sock], daemon=True)
+    sender_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sender_sock.connect(('192.168.1.100', 8888))
+    sender_t = threading.Thread(target=send_audio_message, args=[message_q, sender_sock, tts], daemon=True)
     sender_t.start()
 
     print('Server ready')
@@ -62,7 +69,7 @@ def main():
 
         if last_frame_num is not None:
             if frame_num != last_frame_num + 1 or (last_frame_num == MAX_COUNTER and frame_num != 0):
-                print('WARNING: frame {frame_num} received out of order')
+                print(f'WARNING: frame {frame_num} received out of order')
                 last_frame_num = frame_num
                 continue
 

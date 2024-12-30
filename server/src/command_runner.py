@@ -16,7 +16,7 @@ def run_command(command_text: str, message_q: queue.Queue, sender_addr: Any) -> 
 
 def dumb_timer(seconds: int, message_q: queue.Queue, sender_addr: Any):
     time.sleep(seconds)
-    message_q.put(('Time\'s up', sender_addr))
+    message_q.put(('Your timer has expired', sender_addr))
 
 
 def run_timer_command(command_text: str, message_q: queue.Queue, sender_addr: Any) -> bool:
