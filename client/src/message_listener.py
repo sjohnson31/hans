@@ -1,30 +1,17 @@
-import os
 import socket
 import struct
 from types import NoneType
 from typing import Callable, NoReturn
-import wave
-
-MAX_PACKET_SIZE = 65_507
 
 
-def write_audio(frames):
-    channels = 1
-    with wave.open('testing.wav', 'wb') as f:
-        f.setnchannels(channels)
-        f.setsampwidth(2)
-        f.setframerate(44100)
-        f.writeframes(frames)
-
-
-def listen(play_cb: Callable[..., NoneType]) -> NoReturn:
+def listen(play_cb: Callable[[bytes], NoneType], port: int) -> NoReturn:
     while True:
-        inner_listen(play_cb)
+        inner_listen(play_cb, port)
 
 
-def inner_listen(play_cb: Callable[..., NoneType]) -> None:
+def inner_listen(play_cb: Callable[[bytes], NoneType], port: int) -> None:
     udp_ip = '0.0.0.0'
-    udp_port = int(os.environ['SERVER_PORT'])
+    udp_port = port
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind((udp_ip, udp_port))
         sock.listen(1)
@@ -51,5 +38,4 @@ def inner_listen(play_cb: Callable[..., NoneType]) -> None:
                     audio_buf.extend(message[:message_size - len(audio_buf)])
                     message_size = -1
                     print('Done getting message')
-                    #write_audio(audio_buf)
                     play_cb(bytes(audio_buf))

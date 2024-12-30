@@ -10,8 +10,7 @@ END_INDICATOR = 2
 
 CHUNK_SIZE = 4096
 
-def send_audio_frames(frame_q: queue.Queue, server_sock: socket.socket, server_addr: str, server_port: int, trigger_transcription_event: Event) -> NoReturn:
-
+def send_audio_frames(frame_q: queue.Queue, server_sock: socket.socket, server_addr: str, server_port: int) -> NoReturn:
     frame_num = 0
     audio_data = bytearray()
 

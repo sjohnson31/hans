@@ -22,9 +22,10 @@ def main():
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_ip = os.environ['SERVER_ADDRESS']
     server_port = int(os.environ['SERVER_PORT'])
+    local_port = int(os.environ['LOCAL_PORT'])
     input_device_index = int(os.environ['INPUT_DEVICE_INDEX'])
-    trigger_transcription_event = threading.Event()
-    process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port, trigger_transcription_event), daemon=True)
+    output_device_index = int(os.environ['OUTPUT_DEVICE_INDEX'])
+    process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port), daemon=True)
     process_thread.start()
 
     audio = pyaudio.PyAudio()
@@ -41,19 +42,18 @@ def main():
     def play_cb(audio_data):
         start_i = 0
         def inner_cb(_, frame_count: int, time_info, status_flags):
-            print('Hello from inner_cb')
             nonlocal start_i
             print(f'{frame_count=}, {start_i=}')
             data_to_send = audio_data[start_i:start_i + (frame_count * 2)]
             start_i += frame_count * 2
             return(data_to_send, pyaudio.paContinue)
         
-        stream = audio.open(format=audio.get_format_from_width(2), channels=1, rate=44100, output=True, output_device_index=4, stream_callback=inner_cb)
+        stream = audio.open(format=audio.get_format_from_width(2), channels=1, rate=44100, output=True, output_device_index=output_device_index, stream_callback=inner_cb)
         while stream.is_active():
             time.sleep(0.1)
         stream.close()
     
-    listener_thread = threading.Thread(target=listen, args=[play_cb], daemon=True)
+    listener_thread = threading.Thread(target=listen, args=[play_cb, local_port], daemon=True)
     listener_thread.start()
 
     try:
