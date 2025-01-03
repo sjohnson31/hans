@@ -31,10 +31,12 @@ def write_audio(frames):
         
 
 def main():
-    udp_ip = '0.0.0.0'
-    udp_port = int(os.environ['SERVER_PORT'])
+    local_addr = '0.0.0.0'
+    local_port = int(os.environ['SERVER_PORT'])
+    remote_port = int(os.environ['RETURN_CHANNEL_PORT'])
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((udp_ip, udp_port))
+    sock.bind((local_addr, local_port))
 
     vad_model = load_silero_vad()
     voice_detector = VoiceDetector(vad_model)
@@ -52,16 +54,14 @@ def main():
     num_voiceless_frames_seen = 0
 
     message_q = queue.Queue()
-    sender_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sender_sock.connect(('192.168.1.100', 8888))
-    sender_t = threading.Thread(target=send_audio_message, args=[message_q, sender_sock, tts], daemon=True)
+    sender_t = threading.Thread(target=send_audio_message, args=[message_q, tts], daemon=True)
     sender_t.start()
 
     print('Server ready')
 
     while True:
         data, sender_addr = sock.recvfrom(MAX_PACKET_SIZE)
-        sender_addr = (sender_addr[0], udp_port)
+        sender_addr = (sender_addr[0], local_port)
         indicator, frame_num, audio_length = struct.unpack_from(header_fmt, data)
         audio_fmt = f'<{audio_length}h'
         audio_bytes = bytes(struct.unpack_from(audio_fmt, data, offset=header_size))
