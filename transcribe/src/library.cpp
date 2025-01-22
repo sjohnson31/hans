@@ -4,7 +4,7 @@
 #include "grammar-parser.h"
 #include "library.h"
 
-namespace hans_transcribe
+namespace transcribe
 {
     int verify_grammar(std::string grammar)
     {

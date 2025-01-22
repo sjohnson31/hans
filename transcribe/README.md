@@ -1,3 +1,3 @@
 # Run Tests
 
-uv run pytest tests
+uv run --reinstall pytest tests
