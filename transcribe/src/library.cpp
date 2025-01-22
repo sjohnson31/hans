@@ -11,7 +11,6 @@ namespace transcribe
         const grammar_parser::parse_state grammar_parsed = grammar_parser::parse(grammar.c_str());
         if (grammar_parsed.rules.empty())
         {
-            std::cout << "Failed to parse grammar" << std::endl;
             return -1;
         }
 
