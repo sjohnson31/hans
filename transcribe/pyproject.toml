@@ -1,0 +1,20 @@
+[project]
+name = "transcribe"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Sam Burba", email = "github@samburba.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pytest>=8.3.4",
+]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11"]
+build-backend = "scikit_build_core.build"
