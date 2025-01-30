@@ -21,7 +21,7 @@ def model(files):
 
 @pytest.fixture
 def five_minute_timer_samples(files):
-    with resources.as_file(files.joinpath('samples', '5min_timer_three.wav')) as wav_file:
+    with resources.as_file(files.joinpath('samples', '5min_timer.wav')) as wav_file:
         yield samples(wav_file)
 
 def samples(wav_file: os.PathLike) -> NDArray[np.float16]:
