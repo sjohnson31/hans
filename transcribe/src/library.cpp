@@ -14,8 +14,7 @@ namespace transcribe
 
     whisper_context *context_init(std::string &model_path)
     {
-        auto params = whisper_context_default_params();
-        return whisper_init_from_file_with_params(model_path.c_str(), params);
+        return whisper_init_from_file(model_path.c_str());
     }
 
     void context_free(whisper_context *ctx)
