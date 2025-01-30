@@ -3,8 +3,9 @@ option(SKBUILD_PROJECT_NAME "A thing" "transcribe")
 project(${SKBUILD_PROJECT_NAME} LANGUAGES CXX)
 
 # Some systems fail to correctly load the dynamic libraries in a venv
-# Always using static libraries is reasonable anyways, so just force that here
-SET(BUILD_SHARED_LIBS OFF CACHE BOOL "Build using shared libraries")
+# Always using static libraries is reasonable
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build using shared libraries")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(PYBIND11_FINDPYTHON ON)
 add_subdirectory(extern/pybind11)
