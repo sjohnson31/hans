@@ -18,39 +18,39 @@ struct whisper_context_wrapper
 whisper_context_wrapper context_init_wrapper(std::string &model_path)
 {
   struct whisper_context_wrapper ctx_w;
-  ctx_w.ptr = transcribe::context_init(model_path);
+  ctx_w.ptr = whisppy::context_init(model_path);
   return ctx_w;
 }
 
 void context_free_wrapper(struct whisper_context_wrapper ctx_w)
 {
-  transcribe::context_free(ctx_w.ptr);
+  whisppy::context_free(ctx_w.ptr);
 }
 
 std::string transcribe_wrapper(
     whisper_context_wrapper *ctx,
-    py::array_t<float, py::array::c_style> samples,
+    const py::array_t<float, py::array::c_style> samples,
     /** Sample text to help with transcription */
     const std::string &initial_prompt,
-    /** GBNF grammar to guide decoding */
-    const std::string &gbnf_grammar,
+    /** Grammar to guide decoding */
+    const grammar_parser::parse_state &grammar,
     /** Root grammar rule to start at for transcription */
     const std::string &grammar_rule)
 {
   py::buffer_info buf = samples.request();
   float *samples_ptr = static_cast<float *>(buf.ptr);
   size_t sample_count = samples.size();
-  return transcribe::transcribe(ctx->ptr, samples_ptr, sample_count, initial_prompt, gbnf_grammar, grammar_rule);
+  return whisppy::transcribe(ctx->ptr, samples_ptr, sample_count, initial_prompt, grammar, grammar_rule);
 }
 
-PYBIND11_MODULE(_core, m)
+PYBIND11_MODULE(_whisppy, m)
 {
-  m.doc() = "hans transcribe";
+  m.doc() = "whisper.cpp bindings";
 
   py::class_<whisper_context_wrapper>(m, "WhisperContext");
   py::class_<grammar_parser::parse_state>(m, "ParsedGrammar");
 
-  m.def("grammar_parse", &transcribe::grammar_parse, R"pbdoc(
+  m.def("grammar_parse", &whisppy::grammar_parse, R"pbdoc(
       Parse the given ebnf grammar
     )pbdoc");
 

@@ -1,7 +1,7 @@
 [project]
-name = "transcribe"
+name = "whisppy"
 version = "0.1.0"
-description = "Add your description here"
+description = "whisper.cpp bindings for hans"
 readme = "README.md"
 authors = [
     { name = "Sam Burba", email = "github@samburba.com" }
