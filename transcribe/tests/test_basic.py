@@ -1,4 +1,4 @@
-import importlib.resources as resources
+from importlib import resources
 import wave
 import os
 from pathlib import Path
