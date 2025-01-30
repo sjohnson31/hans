@@ -26,7 +26,6 @@ def five_minute_timer_samples(files):
 
 def samples(wav_file: os.PathLike) -> NDArray[np.float16]:
     with wave.open(str(wav_file), 'rb') as wav:
-        print(wav.getparams())
         raw_data = wav.readframes(wav.getnframes())
         sample_data = np.frombuffer(raw_data, dtype=np.int16)
         sample_data = sample_data.astype(np.float32) / np.iinfo(np.int16).max
