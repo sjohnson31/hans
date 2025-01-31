@@ -5,7 +5,7 @@
 #include "grammar-parser.h"
 #include "library.h"
 
-namespace transcribe
+namespace whisppy
 {
     grammar_parser::parse_state grammar_parse(std::string grammar)
     {
@@ -26,11 +26,11 @@ namespace transcribe
         whisper_context *ctx,
         // Use a raw pointer instead of a vector to ease translation between python & cpp
         const float *pcmf32_samples,
-        int n_pcmf32_samples,
+        const int n_pcmf32_samples,
         /** Sample text to help with transcription */
         const std::string &initial_prompt,
-        /** GBNF grammar to guide decoding */
-        const std::string &gbnf_grammar,
+        /** Grammar to guide transcription */
+        const grammar_parser::parse_state &grammar,
         /** Root grammar rule for transcription */
         const std::string &grammar_rule)
     {
@@ -49,18 +49,16 @@ namespace transcribe
 
         params.initial_prompt = initial_prompt.c_str();
 
-        // TODO: Don't parse the grammar every time
-        const grammar_parser::parse_state grammar_parsed = grammar_parser::parse(gbnf_grammar.c_str());
-        auto grammar_rules = grammar_parsed.c_rules();
-        if (grammar_parsed.rules.empty())
+        if (grammar.rules.empty())
         {
             // TODO: Better
             return "";
         }
 
+        auto grammar_rules = grammar.c_rules();
         params.grammar_rules = grammar_rules.data();
         params.n_grammar_rules = grammar_rules.size();
-        params.i_start_rule = grammar_parsed.symbol_ids.at(grammar_rule);
+        params.i_start_rule = grammar.symbol_ids.at(grammar_rule);
         params.grammar_penalty = 100.0f;
 
         if (whisper_full(ctx, params, pcmf32_samples, n_pcmf32_samples) != 0)

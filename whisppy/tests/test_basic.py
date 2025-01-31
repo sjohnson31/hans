@@ -7,7 +7,7 @@ import pytest
 import numpy as np
 from numpy.typing import NDArray
 
-from transcribe import grammar_parse, transcriber
+from whisppy import grammar_parse, transcriber
 
 
 @pytest.fixture
@@ -36,11 +36,10 @@ def test_grammar_parse():
     assert grammar_parse('root ::= "hello"') is not None
 
 def test_transcribe(model: Path, five_minute_timer_samples):
-    with transcriber(str(model)) as t:
+    with transcriber(str(model), gbnf_grammar='root ::= "Hey Hans, set a timer for 5 minutes"') as t:
         text = t.transcribe(
             five_minute_timer_samples,
             initial_prompt="Hey Hans, set a timer for 5 minutes",
-            gbnf_grammar='root ::= "Hey Hans, set a timer for 5 minutes"',
             grammar_rule="root",
         )
         assert text == "Hey Hans, set a timer for 5 minutes"

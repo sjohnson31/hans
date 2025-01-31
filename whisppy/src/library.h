@@ -6,7 +6,7 @@
 
 #include "grammar-parser.h"
 
-namespace transcribe
+namespace whisppy
 {
     grammar_parser::parse_state grammar_parse(std::string grammar);
 
@@ -21,8 +21,8 @@ namespace transcribe
         int n_pcmf32_samples,
         /** Sample text to help with transcription */
         const std::string &initial_prompt,
-        /** GBNF grammar to guide decoding */
-        const std::string &gbnf_grammar,
-        /** Root grammar rule to start at for transcription */
+        /** Grammar to guide transcription */
+        const grammar_parser::parse_state &grammar,
+        /** Root grammar rule for transcription */
         const std::string &grammar_rule);
 }
