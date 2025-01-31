@@ -3,14 +3,9 @@ name = "whisppy"
 version = "0.1.0"
 description = "whisper.cpp bindings for hans"
 readme = "README.md"
-authors = [
-    { name = "Sam Burba", email = "github@samburba.com" }
-]
+authors = [{ name = "Sam Burba", email = "github@samburba.com" }]
 requires-python = ">=3.13"
-dependencies = [
-    "numpy>=2.2.2",
-    "pytest>=8.3.4",
-]
+dependencies = ["numpy>=2.2.2", "pytest>=8.3.4"]
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"
@@ -19,3 +14,21 @@ build-dir = "build/{wheel_tag}"
 [build-system]
 requires = ["scikit-build-core>=0.10", "pybind11"]
 build-backend = "scikit_build_core.build"
+
+[tool.uv]
+# If any of these specified files change, uv will rebuild the project
+# automatically when a uv run command is executed.
+#
+# NOTE: This does mean that if you manually change anything inside of
+# pybind11 or whisper.cpp it will not automatically rebuild and pick
+# up those changes. Specifying all files inside both submodules would
+# make all commands slow because the entire directory would have to
+# be scanned for changes each time, so we use the commit of the
+# submodule instead
+cache-keys = [
+    { file = "CMakeLists.txt" },
+    { file = "src/*.cpp" },
+    { file = "src/*.h" },
+    { file = "../.git/modules/whisppy/extern/pybind11/HEAD" },
+    { file = "../.git/modules/whisppy/extern/whisper.cpp/HEAD" },
+]
