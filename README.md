@@ -33,7 +33,7 @@ git submodule update --init --recursive
 
 ## Get large files
 
-Only necessary if git-lfs wasn't installed at first checkout and you want to run transcribe tests
+Only necessary if git-lfs wasn't installed at first checkout
 
 ```bash
 git lfs pull

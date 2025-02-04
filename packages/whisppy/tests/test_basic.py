@@ -24,6 +24,12 @@ def five_minute_timer_samples(resource_path: Path):
         wav_data = samples(wav_file)
     return wav_data
 
+@pytest.fixture
+def jibberish_samples(resource_path: Path):
+    with open(resource_path.joinpath('samples', 'jibberish.wav'), 'rb') as wav_file:
+        wav_data = samples(wav_file)
+    return wav_data
+
 def samples(wav_file: Path) -> NDArray[np.float16]:
     with wave.open(wav_file, 'rb') as wav:
         raw_data = wav.readframes(wav.getnframes())
@@ -43,3 +49,12 @@ def test_transcribe(model: Path, five_minute_timer_samples):
             grammar_rule="root",
         )
         assert text == "Hey Hans, set a timer for 5 minutes"
+
+def test_transcribe_non_grammar_sentence(model: Path, jibberish_samples):
+    with transcriber(str(model), gbnf_grammar='root ::= "Hey Hans, set a timer for 5 minutes"') as t:
+        text = t.transcribe(
+            jibberish_samples,
+            initial_prompt="Hey Hans, set a timer for 5 minutes",
+            grammar_rule="root",
+        )
+        assert text == ""

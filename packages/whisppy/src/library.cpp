@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <cmath>
 
 #include "whisper.h"
 #include "grammar-parser.h"
@@ -69,10 +70,36 @@ namespace whisppy
 
         std::string result;
         const int n_segments = whisper_full_n_segments(ctx);
+        float logprob_min = 0.0f;
+        float logprob_sum = 0.0f;
+
         for (int i = 0; i < n_segments; ++i)
         {
             const char *text = whisper_full_get_segment_text(ctx, i);
+
             result += text;
+
+            const int n = whisper_full_n_tokens(ctx, i);
+            for (int j = 0; j < n; ++j)
+            {
+                const auto token = whisper_full_get_token_data(ctx, i, j);
+
+                if (token.plog > 0.0f)
+                    exit(0);
+                logprob_min = std::min(logprob_min, token.plog);
+                logprob_sum += token.plog;
+            }
+        }
+
+        fprintf(stderr, "logprob_min: %f, logprob_sum: %f\n", logprob_min, logprob_sum);
+        float p_min = 100.0f * std::exp(logprob_min);
+        float p_sum = 100.0f * std::exp(logprob_sum);
+        fprintf(stderr, "probability_min: %f, prob_sum: %f\n", p_min, p_sum);
+
+        // TODO: Return the probability instead of making the decision here
+        if (p_min < 99.0f)
+        {
+            return "";
         }
 
         return result;

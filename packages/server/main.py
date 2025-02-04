@@ -20,6 +20,23 @@ FRAME_INDICATOR = 1
 END_INDICATOR = 2
 MAX_PACKET_SIZE = 65_507
 
+# Backus–Naur form grammar for commands
+# https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
+GRAMMAR = """
+root ::= "Hey Hans, set a " duration " timer."
+duration ::= number " " ("minute" | "hour") (" and " number " hour")?
+number ::= [0-9] [0-9]? [0-9]?
+"""
+
+GRAMMAR_ROOT = "root"
+
+# Transcription examples for expected voice commands
+# Used by whispercpp to guide transcription
+# https://github.com/ggerganov/whisper.cpp/blob/cadfc50eabb46829a0d5ac7ffcb3778ad60a1257/include/whisper.h#L516
+INITIAL_PROMPT = """
+Hey Hans, set a 5 minute timer.
+Hey Hans, set a 15 hour and 3 minute timer.
+"""
 
 def write_audio(frames):
     channels = 1
@@ -58,7 +75,7 @@ def main():
 
     print('Server ready')
 
-    with transcriber(stt_model_file, 'root ::= "Hey Hans, set a 5 minute timer"') as t:
+    with transcriber(stt_model_file, GRAMMAR) as t:
         while True:
             data, sender_addr = sock.recvfrom(MAX_PACKET_SIZE)
             sender_addr = (sender_addr[0], local_port)
@@ -89,7 +106,7 @@ def main():
                     audio_data = np.frombuffer(frames, np.int16).astype(np.float32) / np.iinfo(np.int16).max
                     # Make the audio at least one second long
                     audio_data = np.concatenate((audio_data, np.zeros((int(16000) + 10))), dtype=np.float32)
-                    text = t.transcribe(audio_data, initial_prompt="Hey Hans, set a 5 minute timer", grammar_rule="root")
+                    text = t.transcribe(audio_data, initial_prompt=INITIAL_PROMPT, grammar_rule=GRAMMAR_ROOT)
                     run_command(text, message_q, sender_addr)
                     frames = bytearray()
 
