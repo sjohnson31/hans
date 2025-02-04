@@ -22,15 +22,15 @@ def main():
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_ip = os.environ['SERVER_ADDRESS']
     server_port = int(os.environ['SERVER_PORT'])
-    local_port = int(os.environ['LOCAL_PORT'])
+    client_port = int(os.environ['CLIENT_PORT'])
     input_device_index = int(os.environ['INPUT_DEVICE_INDEX'])
     output_device_index = int(os.environ['OUTPUT_DEVICE_INDEX'])
     process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port), daemon=True)
     process_thread.start()
 
     audio = pyaudio.PyAudio()
-    #for i in range(audio.get_device_count()):
-    #    print(audio.get_device_info_by_index(i))
+    for i in range(audio.get_device_count()):
+       print(audio.get_device_info_by_index(i))
 
     def input_cb(in_data, frame_count: int, time_info, status_flags):
         out_data = None
@@ -53,7 +53,7 @@ def main():
             time.sleep(0.1)
         stream.close()
     
-    listener_thread = threading.Thread(target=listen, args=[play_cb, local_port], daemon=True)
+    listener_thread = threading.Thread(target=listen, args=[play_cb, client_port], daemon=True)
     listener_thread.start()
 
     try:

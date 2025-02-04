@@ -1,7 +1,7 @@
 from importlib import resources
 import wave
-import os
 from pathlib import Path
+from os.path import dirname
 
 import pytest
 import numpy as np
@@ -11,21 +11,21 @@ from whisppy import grammar_parse, transcriber
 
 
 @pytest.fixture
-def files():
-    return resources.files()
+def resource_path():
+    return Path(dirname(__file__)).joinpath('../../../resources').resolve()
 
 @pytest.fixture
-def model(files):
-    with resources.as_file(files.joinpath('models', 'ggml-tiny.en.bin')) as model_file:
-        yield model_file
+def model(resource_path: Path):
+    return resource_path.joinpath('models', 'ggml-tiny.en.bin')
 
 @pytest.fixture
-def five_minute_timer_samples(files):
-    with resources.as_file(files.joinpath('samples', '5min_timer.wav')) as wav_file:
-        yield samples(wav_file)
+def five_minute_timer_samples(resource_path: Path):
+    with open(resource_path.joinpath('samples', '5min_timer.wav'), 'rb') as wav_file:
+        wav_data = samples(wav_file)
+    return wav_data
 
-def samples(wav_file: os.PathLike) -> NDArray[np.float16]:
-    with wave.open(str(wav_file), 'rb') as wav:
+def samples(wav_file: Path) -> NDArray[np.float16]:
+    with wave.open(wav_file, 'rb') as wav:
         raw_data = wav.readframes(wav.getnframes())
         sample_data = np.frombuffer(raw_data, dtype=np.int16)
         sample_data = sample_data.astype(np.float32) / np.iinfo(np.int16).max
