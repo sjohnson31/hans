@@ -63,6 +63,6 @@ PYBIND11_MODULE(_whisppy, m)
     )pbdoc");
 
   m.def("transcribe", &transcribe_wrapper, R"pbdoc(
-      Transcribe the thing
+      Transcribe a set of audio samples
     )pbdoc");
 }

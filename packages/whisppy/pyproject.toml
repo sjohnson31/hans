@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "whisper.cpp bindings for hans"
 readme = "README.md"
 authors = [{ name = "Sam Burba", email = "github@samburba.com" }]
-requires-python = ">=3.13"
-dependencies = ["numpy>=2.2.2", "pytest>=8.3.4"]
+requires-python = "==3.11.10"
+dependencies = ["numpy>=1.19.0", "pytest>=8.3.4"]
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"

@@ -20,7 +20,7 @@ class Transcriber:
 
 
 @contextmanager
-def transcriber(model_path: str, gbnf_grammar: str) -> Generator[Transcriber]:
+def transcriber(model_path: str, gbnf_grammar: str) -> Generator[Transcriber, None, None]:
     try:
         ctx = _w.context_init(model_path)
         grammar = _w.grammar_parse(gbnf_grammar)

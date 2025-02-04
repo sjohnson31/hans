@@ -1,6 +1,6 @@
-[submodule "transcribe/extern/whisper.cpp"]
-	path = whisppy/extern/whisper.cpp
+[submodule "packages/whisppy/extern/whisper.cpp"]
+	path = packages/whisppy/extern/whisper.cpp
 	url = git@github.com:ggerganov/whisper.cpp.git
-[submodule "transcribe/extern/pybind11"]
-	path = whisppy/extern/pybind11
+[submodule "packages/whisppy/extern/pybind11"]
+	path = packages/whisppy/extern/pybind11
 	url = git@github.com:pybind/pybind11.git
