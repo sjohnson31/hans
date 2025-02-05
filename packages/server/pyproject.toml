@@ -12,10 +12,12 @@ dependencies = [
     "soundfile>=0.12.1",
     "tts>=0.22.0",
     "whisppy",
+    "transport",
 ]
 
 [tool.uv.sources]
 whisppy = { workspace = true }
+transport = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
