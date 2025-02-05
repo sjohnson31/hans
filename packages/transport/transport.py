@@ -53,7 +53,7 @@ def listen_for_client_audio(local_addr, local_port) -> Generator[ClientAudioPack
 
         indicator, frame_num, audio_length = struct.unpack_from(HEADER_FMT, data)
         audio_fmt = f'<{audio_length}h'
-        audio_bytes = bytes(struct.unpack_from(audio_fmt, data, offset=HEADER_SIZE))
+        audio_bytes = bytes(struct.unpack_from(audio_fmt, data, offset=header_size))
 
         if last_frame_num is not None:
             if frame_num != last_frame_num + 1 or (last_frame_num == MAX_COUNTER and frame_num != 0):
