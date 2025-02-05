@@ -6,6 +6,7 @@ members = [
     "client",
     "hans",
     "server",
+    "transport",
     "whisppy",
 ]
 
@@ -250,6 +251,7 @@ dependencies = [
     { name = "librosa" },
     { name = "numpy" },
     { name = "pyaudio" },
+    { name = "transport" },
 ]
 
 [package.metadata]
@@ -257,6 +259,7 @@ requires-dist = [
     { name = "librosa", specifier = ">=0.10.2.post1" },
     { name = "numpy", specifier = ">=1.19" },
     { name = "pyaudio", specifier = ">=0.2.14" },
+    { name = "transport", editable = "packages/transport" },
 ]
 
 [[package]]
@@ -1693,6 +1696,7 @@ dependencies = [
     { name = "numpy" },
     { name = "silero-vad" },
     { name = "soundfile" },
+    { name = "transport" },
     { name = "tts" },
     { name = "whisppy" },
 ]
@@ -1704,6 +1708,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.19.0" },
     { name = "silero-vad", specifier = ">=5.1.2" },
     { name = "soundfile", specifier = ">=0.12.1" },
+    { name = "transport", editable = "packages/transport" },
     { name = "tts", specifier = ">=0.22.0" },
     { name = "whisppy", editable = "packages/whisppy" },
 ]
@@ -2098,6 +2103,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/c5/cf/1093586e09c8d889d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/40/902c95a2a6f5d2d120c940ac4bd1f937c01035af529803c13d65ca33c2d1/transformers-4.48.2-py3-none-any.whl", hash = "sha256:493bc5b0268b116eff305edf6656367fc89cf570e7a9d5891369e04751db698a", size = 9667774 },
 ]
+
+[[package]]
+name = "transport"
+version = "0.1.0"
+source = { editable = "packages/transport" }
 
 [[package]]
 name = "triton"
