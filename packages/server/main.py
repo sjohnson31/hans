@@ -63,9 +63,9 @@ def main():
     sender_t = threading.Thread(target=send_audio_message, args=[message_q, tts], daemon=True)
     sender_t.start()
 
-    print('Server ready')
 
     with transcriber(stt_model_file, GRAMMAR) as t:
+        print('Server ready')
         for packet in listen_for_client_audio(local_addr, local_port):
             audio_bytes = packet.audio_bytes
             #TODO: Collect frames until we have enough, don't assume a frame is perfect
