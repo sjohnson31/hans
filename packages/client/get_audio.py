@@ -1,29 +1,26 @@
 import os
 import queue
-import socket
-import sys
 import threading
 import time
 
 import pyaudio
 import librosa
 import numpy as np
+from transport import stream_client_audio
 
 from src.message_listener import listen
-from src.process_input import send_audio_frames
 
 def main():
     fmt = pyaudio.paInt16
     channels = 1
     chunk = 1024
     frame_q = queue.Queue()
-    server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_ip = os.environ['SERVER_ADDRESS']
     server_port = int(os.environ['SERVER_PORT'])
     client_port = int(os.environ['CLIENT_PORT'])
     input_device_index = int(os.environ['INPUT_DEVICE_INDEX'])
     output_device_index = int(os.environ['OUTPUT_DEVICE_INDEX'])
-    process_thread = threading.Thread(target=send_audio_frames, args=(frame_q, server_sock, server_ip, server_port), daemon=True)
+    process_thread = threading.Thread(target=stream_client_audio, args=(frame_q, server_ip, server_port), daemon=True)
     process_thread.start()
 
     audio = pyaudio.PyAudio()

@@ -4,7 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = "==3.11.10"
-dependencies = ["librosa>=0.10.2.post1", "numpy>=1.19", "pyaudio>=0.2.14"]
+dependencies = [
+    "librosa>=0.10.2.post1",
+    "numpy>=1.19",
+    "pyaudio>=0.2.14",
+    "transport",
+]
+
+[tool.uv.sources]
+transport = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
