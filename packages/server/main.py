@@ -24,7 +24,7 @@ MAX_PACKET_SIZE = 65_507
 # https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
 GRAMMAR = """
 root ::= "Hey Hans, set a " duration " timer."
-duration ::= number " " ("minute" | "hour") (" and " number " hour")?
+duration ::= number " " ("second" | "minute" | "hour") (" and " number " hour")?
 number ::= [0-9] [0-9]? [0-9]?
 """
 
