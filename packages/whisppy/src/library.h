@@ -16,9 +16,7 @@ namespace whisppy
 
     std::string transcribe(
         whisper_context *ctx,
-        // Use a raw pointer instead of a vector to ease translation between python & cpp
-        const float *pcmf32_samples,
-        int n_pcmf32_samples,
+        const std::vector<float> &pcmf32,
         /** Sample text to help with transcription */
         const std::string &initial_prompt,
         /** Grammar to guide transcription */
