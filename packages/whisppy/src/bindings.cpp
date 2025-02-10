@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -37,10 +38,16 @@ std::string transcribe_wrapper(
     /** Root grammar rule to start at for transcription */
     const std::string &grammar_rule)
 {
+  // Copy data out of python structure so that we can read it
+  // while releasing the GIL
   py::buffer_info buf = samples.request();
   float *samples_ptr = static_cast<float *>(buf.ptr);
-  size_t sample_count = samples.size();
-  return whisppy::transcribe(ctx->ptr, samples_ptr, sample_count, initial_prompt, grammar, grammar_rule);
+  std::vector<float> samples_vec(samples_ptr, samples_ptr + buf.size);
+
+  {
+    py::gil_scoped_release release;
+    return whisppy::transcribe(ctx->ptr, samples_vec, initial_prompt, grammar, grammar_rule);
+  }
 }
 
 PYBIND11_MODULE(_whisppy, m)

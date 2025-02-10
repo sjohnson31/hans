@@ -25,7 +25,7 @@ def main():
 
     audio = pyaudio.PyAudio()
     input_device_info = audio.get_device_info_by_index(input_device_index)
-    rate_input = input_device_info.get('defaultSampleRate')
+    rate_input = int(input_device_info.get('defaultSampleRate'))
     if not rate_input:
         sys.exit('Critical: selected input device does not have a sample rate. Exiting')
     output_device_info = audio.get_device_info_by_index(output_device_index)

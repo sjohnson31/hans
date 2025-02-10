@@ -25,9 +25,7 @@ namespace whisppy
 
     std::string transcribe(
         whisper_context *ctx,
-        // Use a raw pointer instead of a vector to ease translation between python & cpp
-        const float *pcmf32_samples,
-        const int n_pcmf32_samples,
+        const std::vector<float> &pcmf32,
         /** Sample text to help with transcription */
         const std::string &initial_prompt,
         /** Grammar to guide transcription */
@@ -62,7 +60,7 @@ namespace whisppy
         params.i_start_rule = grammar.symbol_ids.at(grammar_rule);
         params.grammar_penalty = 100.0f;
 
-        if (whisper_full(ctx, params, pcmf32_samples, n_pcmf32_samples) != 0)
+        if (whisper_full(ctx, params, pcmf32.data(), pcmf32.size()) != 0)
         {
             // TODO: Better
             return "";
