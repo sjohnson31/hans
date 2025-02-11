@@ -28,10 +28,11 @@ def main():
     rate_input = input_device_info.get('defaultSampleRate')
     if not rate_input:
         sys.exit('Critical: selected input device does not have a sample rate. Exiting')
+    rate_input = int(rate_input)
     output_device_info = audio.get_device_info_by_index(output_device_index)
     # While getting the input rate is crucial (on Linux, Windows doesn't seem to care),
     # getting a device's actual output rate doesn't seem to matter so much
-    rate_output = output_device_info.get('defaultSampleRate', 44100)
+    rate_output = int(output_device_info.get('defaultSampleRate', 44100))
     # for i in range(audio.get_device_count()):
     #    print(audio.get_device_info_by_index(i))
 
