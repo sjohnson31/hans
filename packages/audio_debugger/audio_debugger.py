@@ -14,7 +14,7 @@ class AudioDebugger:
         self.audio_bytes.extend(bytes)
         trigger_size = self.playback_seconds * self.sample_rate * self.dtype.itemsize
         if len(self.audio_bytes) > trigger_size:
-            print("Playing debug audio")
+            print('Playing debug audio')
             sd.play(
                 np.frombuffer(self.audio_bytes, self.dtype),
                 samplerate=self.sample_rate,
