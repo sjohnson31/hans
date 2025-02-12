@@ -1,0 +1,17 @@
+name: PR Workflow
+on: [pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Check style
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check"
+      - name: Check formatting
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "format --check"

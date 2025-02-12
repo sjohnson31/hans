@@ -1,7 +1,5 @@
 import os
 import queue
-import socket
-import struct
 import threading
 import wave
 
@@ -24,7 +22,7 @@ duration ::= number " " ("second" | "minute" | "hour") (" and " number " hour")?
 number ::= [0-9] [0-9]? [0-9]?
 """
 
-GRAMMAR_ROOT = "root"
+GRAMMAR_ROOT = 'root'
 
 # Transcription examples for expected voice commands
 # Used by whispercpp to guide transcription
@@ -34,6 +32,7 @@ Hey Hans, set a 5 minute timer.
 Hey Hans, set a 15 hour and 3 minute timer.
 """
 
+
 def write_audio(frames):
     channels = 1
     with wave.open('testing.wav', 'wb') as f:
@@ -41,7 +40,7 @@ def write_audio(frames):
         f.setsampwidth(2)
         f.setframerate(16000)
         f.writeframes(frames)
-        
+
 
 def main():
     local_addr = '0.0.0.0'
@@ -60,15 +59,16 @@ def main():
     num_voiceless_frames_seen = 0
 
     message_q = queue.Queue()
-    sender_t = threading.Thread(target=send_audio_message, args=[message_q, tts], daemon=True)
+    sender_t = threading.Thread(
+        target=send_audio_message, args=[message_q, tts], daemon=True
+    )
     sender_t.start()
-
 
     with transcriber(stt_model_file, GRAMMAR) as t:
         print('Server ready')
         for packet in listen_for_client_audio(local_addr, local_port):
             audio_bytes = packet.audio_bytes
-            #TODO: Collect frames until we have enough, don't assume a frame is perfect
+            # TODO: Collect frames until we have enough, don't assume a frame is perfect
             # OR MAYBE DO?!?!?
             frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
             if frame_is_voice:
@@ -81,10 +81,17 @@ def main():
 
             if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
                 print('decided to transcribe')
-                audio_data = np.frombuffer(frames, np.int16).astype(np.float32) / np.iinfo(np.int16).max
+                audio_data = (
+                    np.frombuffer(frames, np.int16).astype(np.float32)
+                    / np.iinfo(np.int16).max
+                )
                 # Make the audio at least one second long
-                audio_data = np.concatenate((audio_data, np.zeros((int(16000) + 10))), dtype=np.float32)
-                text = t.transcribe(audio_data, initial_prompt=INITIAL_PROMPT, grammar_rule=GRAMMAR_ROOT)
+                audio_data = np.concatenate(
+                    (audio_data, np.zeros((int(16000) + 10))), dtype=np.float32
+                )
+                text = t.transcribe(
+                    audio_data, initial_prompt=INITIAL_PROMPT, grammar_rule=GRAMMAR_ROOT
+                )
                 run_command(text, message_q, packet.sender_addr)
                 frames = bytearray()
 
