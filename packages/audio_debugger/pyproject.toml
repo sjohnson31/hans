@@ -1,0 +1,11 @@
+[project]
+name = "audio-debugger"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11.10"
+dependencies = ["numpy>=1.26.4", "sounddevice>=0.5.1"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
