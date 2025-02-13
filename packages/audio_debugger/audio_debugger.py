@@ -1,12 +1,13 @@
 import sounddevice as sd
 import numpy as np
-
+from numpy._typing import DTypeLike
 
 class AudioDebugger:
-    def __init__(self, playback_seconds=5, sample_rate: int = 16_000, dtype=np.int16):
+    def __init__(self, playback_seconds=5, sample_rate: int = 16_000, dtype: DTypeLike=np.int16):
         self.playback_seconds = playback_seconds
         self.sample_rate = sample_rate
-        self.dtype = dtype
+        # Coerce dtypelike to actual dtype
+        self.dtype = np.dtype(dtype)
         self.audio_bytes = bytearray()
 
     def append(self, bytes: bytes | bytearray):
