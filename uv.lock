@@ -1704,7 +1704,6 @@ dependencies = [
     { name = "number-parser" },
     { name = "numpy" },
     { name = "silero-vad" },
-    { name = "sounddevice" },
     { name = "soundfile" },
     { name = "transport" },
     { name = "tts" },
@@ -1717,7 +1716,6 @@ requires-dist = [
     { name = "number-parser", specifier = ">=0.3.2" },
     { name = "numpy", specifier = ">=1.19.0" },
     { name = "silero-vad", specifier = ">=5.1.2" },
-    { name = "sounddevice", specifier = ">=0.5.1" },
     { name = "soundfile", specifier = ">=0.12.1" },
     { name = "transport", editable = "packages/transport" },
     { name = "tts", specifier = ">=0.22.0" },
@@ -2134,16 +2132,6 @@ wheels = [
 name = "transport"
 version = "0.1.0"
 source = { editable = "packages/transport" }
-dependencies = [
-    { name = "numpy" },
-    { name = "sounddevice" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "numpy", specifier = ">=1.26.4" },
-    { name = "sounddevice", specifier = ">=0.5.1" },
-]
 
 [[package]]
 name = "triton"

@@ -8,11 +8,14 @@ dependencies = [
     "librosa>=0.10.2.post1",
     "numpy>=1.19",
     "pyaudio>=0.2.14",
+    "sounddevice>=0.5.1",
     "transport",
+    "audio_debugger",
 ]
 
 [tool.uv.sources]
 transport = { workspace = true }
+audio_debugger = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
