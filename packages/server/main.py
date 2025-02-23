@@ -1,7 +1,6 @@
 import os
 import queue
 import threading
-import wave
 
 import torch
 import numpy as np
