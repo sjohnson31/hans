@@ -1,99 +1,69 @@
 import os
 import queue
 import threading
-import time
-import sys
 
-import pyaudio
 import librosa
 import numpy as np
+from numpy.typing import NDArray
+import sounddevice as sd
 from transport import stream_client_audio
 
 from src.message_listener import listen
 
 
 def main():
-    fmt = pyaudio.paInt16
-    channels = 1
-    chunk = 1024
     frame_q = queue.Queue()
     server_ip = os.environ['SERVER_ADDRESS']
     server_port = int(os.environ['SERVER_PORT'])
     client_port = int(os.environ['CLIENT_PORT'])
-    input_device_index = int(os.environ['INPUT_DEVICE_INDEX'])
-    output_device_index = int(os.environ['OUTPUT_DEVICE_INDEX'])
+    # Substring of the full device name given in sd.query_devices()
+    # See https://python-sounddevice.readthedocs.io/en/0.5.1/api/streams.html#sounddevice.Stream
+    # device parameter for more information
+    input_device = os.environ.get('INPUT_DEVICE', 'default')
+    output_device = os.environ.get('OUTPUT_DEVICE', 'default')
+
     process_thread = threading.Thread(
         target=stream_client_audio, args=(frame_q, server_ip, server_port), daemon=True
     )
     process_thread.start()
+    input_sample_rate = int(
+        sd.query_devices(input_device, 'input')['default_samplerate']
+    )
 
-    audio = pyaudio.PyAudio()
-    input_device_info = audio.get_device_info_by_index(input_device_index)
-    rate_input = input_device_info.get('defaultSampleRate')
-    if not rate_input:
-        sys.exit('Critical: selected input device does not have a sample rate. Exiting')
-    rate_input = int(rate_input)
-    output_device_info = audio.get_device_info_by_index(output_device_index)
-    # While getting the input rate is crucial (on Linux, Windows doesn't seem to care),
-    # getting a device's actual output rate doesn't seem to matter so much
-    rate_output = int(output_device_info.get('defaultSampleRate', 44100))
-    # for i in range(audio.get_device_count()):
-    #    print(audio.get_device_info_by_index(i))
-
-    def input_cb(in_data, frame_count: int, time_info, status_flags):
-        out_data = None
-        flag = pyaudio.paContinue
+    def input_cb(in_data: NDArray[np.float32], frames, ctime, *_):
         new_sample = librosa.resample(
-            np.frombuffer(in_data, np.int16).astype(np.float32),
-            orig_sr=rate_input,
-            target_sr=16000,
+            in_data,
+            orig_sr=input_sample_rate,
+            target_sr=16_000,
+            res_type='soxr_qq',
+            axis=0,
         )
-        frame_q.put(new_sample.astype(np.int16).tobytes())
-        return (out_data, flag)
+        resampled = (new_sample * np.iinfo(np.int16).max).astype(np.int16).tobytes()
+        frame_q.put(resampled)
 
-    def play_cb(audio_data):
-        start_i = 0
-
-        def inner_cb(_, frame_count: int, time_info, status_flags):
-            nonlocal start_i
-            print(f'{frame_count=}, {start_i=}')
-            data_to_send = audio_data[start_i : start_i + (frame_count * 2)]
-            start_i += frame_count * 2
-            return (data_to_send, pyaudio.paContinue)
-
-        stream = audio.open(
-            format=audio.get_format_from_width(2),
-            channels=1,
-            rate=rate_output,
-            output=True,
-            output_device_index=output_device_index,
-            stream_callback=inner_cb,
+    def play_cb(audio_data: bytearray):
+        sd.play(
+            np.frombuffer(audio_data, np.int16),
+            # This is the samplerate coming out of the TTS
+            # TODO: Encode samplerate in transport packet
+            samplerate=48_000,
+            device=output_device,
+            blocking=True,
         )
-        while stream.is_active():
-            time.sleep(0.1)
-        stream.close()
 
     listener_thread = threading.Thread(
         target=listen, args=[play_cb, client_port], daemon=True
     )
     listener_thread.start()
 
-    try:
-        in_dev = audio.open(
-            format=fmt,
-            channels=channels,
-            rate=rate_input,
-            input=True,
-            input_device_index=input_device_index,
-            frames_per_buffer=chunk,
-            stream_callback=input_cb,
-        )
+    with sd.InputStream(
+        device=input_device,
+        channels=1,
+        callback=input_cb,
+        samplerate=input_sample_rate,
+    ):
         while process_thread.is_alive():
             process_thread.join(0.5)
-    finally:
-        in_dev.stop_stream()
-        in_dev.close()
-        audio.terminate()
 
 
 if __name__ == '__main__':
