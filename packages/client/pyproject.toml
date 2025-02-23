@@ -21,7 +21,7 @@ build-backend = "hatchling.build"
 # These should be globally unique, because all package scripts end up
 # in the same place in the venv
 [project.scripts]
-hans_client = "get_audio:main"
+hans_client = "main:main"
 
 #TODO: This is definitely wrong when building a non-editable wheel
 [tool.hatch.build.targets.wheel]
