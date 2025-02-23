@@ -32,3 +32,6 @@ cache-keys = [
     { file = "../.git/modules/whisppy/extern/pybind11/HEAD" },
     { file = "../.git/modules/whisppy/extern/whisper.cpp/HEAD" },
 ]
+
+[tool.ruff]
+extend-exclude = ["extern"]
