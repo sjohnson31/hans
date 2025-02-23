@@ -1,3 +1,5 @@
+import enum
+import os
 from enum import Enum
 import sounddevice as sd
 import numpy as np
@@ -6,8 +8,8 @@ import wave
 
 
 class DebugMode(Enum):
-    PLAYBACK = ('playback',)
-    SAVE = 'save'
+    PLAYBACK = enum.auto()
+    SAVE = enum.auto()
 
 
 class AudioDebugger:
@@ -40,6 +42,7 @@ class AudioDebugger:
                 self.audio_bytes = bytearray()
             else:
                 print('Saving debug audio')
+                os.makedirs('debug', exist_ok=True)
                 with wave.open(
                     f'debug/debug_audio_{self.debug_count}.wav', 'wb'
                 ) as wav:
