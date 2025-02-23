@@ -33,15 +33,6 @@ Hey Hans, set a 15 hour and 3 minute timer.
 """
 
 
-def write_audio(frames):
-    channels = 1
-    with wave.open('testing.wav', 'wb') as f:
-        f.setnchannels(channels)
-        f.setsampwidth(2)
-        f.setframerate(16000)
-        f.writeframes(frames)
-
-
 def main():
     local_addr = '0.0.0.0'
     local_port = int(os.environ['SERVER_PORT'])
