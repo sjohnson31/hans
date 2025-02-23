@@ -35,7 +35,7 @@ def inner_listen(play_cb: Callable[[bytes], NoneType], port: int) -> None:
                 if message_size - len(audio_buf) > len(message):
                     audio_buf.extend(message)
                 else:
-                    audio_buf.extend(message[:message_size - len(audio_buf)])
+                    audio_buf.extend(message[: message_size - len(audio_buf)])
                     message_size = -1
                     print('Done getting message')
                     play_cb(bytes(audio_buf))
