@@ -26,8 +26,8 @@ class AudioDebugger:
         self.mode = mode
         self.debug_count = 0
 
-    def append(self, bytes: bytes | bytearray):
-        self.audio_bytes.extend(bytes)
+    def append(self, audio_bytes: bytes | bytearray):
+        self.audio_bytes.extend(audio_bytes)
         trigger_size = self.playback_seconds * self.sample_rate * self.dtype.itemsize
         if len(self.audio_bytes) > trigger_size:
             if self.mode == DebugMode.PLAYBACK:
