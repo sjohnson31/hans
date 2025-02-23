@@ -1,3 +1,4 @@
+import enum
 from enum import Enum
 import sounddevice as sd
 import numpy as np
@@ -6,8 +7,8 @@ import wave
 
 
 class DebugMode(Enum):
-    PLAYBACK = ('playback',)
-    SAVE = 'save'
+    PLAYBACK = enum.auto()
+    SAVE = enum.auto()
 
 
 class AudioDebugger:
