@@ -4,7 +4,8 @@ import threading
 import time
 from typing import Any
 from datetime import datetime
-from durations_nlp import Duration, ScaleFormatError
+from durations_nlp import Duration
+from durations_nlp.exceptions import ScaleFormatError
 from number_parser import parse as replace_textual_numbers
 
 # Have to replace the word "seconds", because number_parser
