@@ -30,7 +30,7 @@ def main():
         sd.query_devices(input_device, 'input')['default_samplerate']
     )
 
-    def input_cb(in_data: NDArray[np.float32], frames, ctime, *_):
+    def input_cb(in_data: NDArray[np.float32], *_):
         new_sample = librosa.resample(
             in_data,
             orig_sr=input_sample_rate,
