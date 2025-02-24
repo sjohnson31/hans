@@ -33,7 +33,7 @@ Hey Hans, set a 15 hour and 3 minute timer.
 
 
 def main():
-    local_addr = '0.0.0.0'
+    local_addr = 'hans.local'
     local_port = int(os.environ['SERVER_PORT'])
     stt_model_file = os.environ['STT_MODEL_FILE']
 
@@ -56,7 +56,12 @@ def main():
 
     with transcriber(stt_model_file, GRAMMAR) as t:
         print('Server ready')
-        for packet in listen_for_client_audio(local_addr, local_port):
+        for packet in listen_for_client_audio(
+            local_addr,
+            local_port,
+            certfile='certs/hans.local.pem',
+            keyfile='certs/hans.local-key.pem',
+        ):
             audio_bytes = packet.audio_bytes
             # TODO: Collect frames until we have enough, don't assume a frame is perfect
             # OR MAYBE DO?!?!?
