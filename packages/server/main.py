@@ -1,7 +1,6 @@
 import os
 import queue
 import threading
-import wave
 
 import torch
 import numpy as np
@@ -31,15 +30,6 @@ INITIAL_PROMPT = """
 Hey Hans, set a 5 minute timer.
 Hey Hans, set a 15 hour and 3 minute timer.
 """
-
-
-def write_audio(frames):
-    channels = 1
-    with wave.open('testing.wav', 'wb') as f:
-        f.setnchannels(channels)
-        f.setsampwidth(2)
-        f.setframerate(16000)
-        f.writeframes(frames)
 
 
 def main():
