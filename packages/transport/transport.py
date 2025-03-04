@@ -36,7 +36,6 @@ def _stream_client_audio(
     context = ssl.create_default_context()
     with socket.create_connection((addr, port), timeout=1.5) as unsecured_sock:
         with context.wrap_socket(unsecured_sock, server_hostname=addr) as sock:
-            frame_num = 0
             audio_data = bytearray()
             fmt = f'{HEADER_FMT}{AUDIO_CHUNK_SIZE}h'
 
@@ -52,11 +51,6 @@ def _stream_client_audio(
                     sock.send(
                         struct.pack(fmt, FRAME_INDICATOR, AUDIO_CHUNK_SIZE, *chunk)
                     )
-
-                    if frame_num >= MAX_COUNTER:
-                        frame_num = 0
-                    else:
-                        frame_num += 1
 
 
 def listen_for_client_audio(
