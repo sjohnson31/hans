@@ -1,16 +1,16 @@
 import queue
 import socket
 import struct
-from typing import Dict, NoReturn
+from typing import NoReturn
 
 import numpy as np
 
 
 def send_audio_message(message_q: queue.Queue, tts) -> NoReturn:
-    socks: Dict[str, socket.socket] = {}
+    socks: dict[str, socket.socket] = {}
     while True:
         message, remote_addr = message_q.get()
-        if remote_addr not in socks.keys():
+        if remote_addr not in socks:
             try:
                 socks[remote_addr] = socket.create_connection(remote_addr, timeout=1.0)
             except TimeoutError:

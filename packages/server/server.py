@@ -2,16 +2,16 @@ import os
 import queue
 import threading
 
-import torch
 import numpy as np
-from TTS.api import TTS
 from silero_vad import load_silero_vad
-from whisppy import transcriber
+import torch
 from transport import listen_for_client_audio
+from TTS.api import TTS
+from whisppy import transcriber
 
+from src.command_runner import run_command
 from src.message_sender import send_audio_message
 from src.voice_detector import VoiceDetector
-from src.command_runner import run_command
 
 # Backus–Naur form grammar for commands
 # https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
@@ -36,6 +36,8 @@ def main():
     local_addr = 'hans.local'
     local_port = int(os.environ['SERVER_PORT'])
     stt_model_file = os.environ['STT_MODEL_FILE']
+    cert_file = os.environ.get('CERT_FILE', 'certs/hans.local.pem')
+    key_file = os.environ.get('KEY_FILE', 'certs/hans.local-key.pem')
 
     vad_model = load_silero_vad()
     voice_detector = VoiceDetector(vad_model)
@@ -59,8 +61,8 @@ def main():
         for packet in listen_for_client_audio(
             local_addr,
             local_port,
-            certfile='certs/hans.local.pem',
-            keyfile='certs/hans.local-key.pem',
+            cert_file=cert_file,
+            key_file=key_file,
         ):
             audio_bytes = packet.audio_bytes
             # TODO: Collect frames until we have enough, don't assume a frame is perfect
@@ -82,7 +84,7 @@ def main():
                 )
                 # Make the audio at least one second long
                 audio_data = np.concatenate(
-                    (audio_data, np.zeros((int(16000) + 10))), dtype=np.float32
+                    (audio_data, np.zeros(16000 + 10)), dtype=np.float32
                 )
                 text = t.transcribe(
                     audio_data, initial_prompt=INITIAL_PROMPT, grammar_rule=GRAMMAR_ROOT

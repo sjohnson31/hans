@@ -1,7 +1,8 @@
+from collections.abc import Callable
 import socket
 import struct
 from types import NoneType
-from typing import Callable, NoReturn
+from typing import NoReturn
 
 
 def listen(play_cb: Callable[[bytes], NoneType], port: int) -> NoReturn:
