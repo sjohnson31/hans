@@ -36,6 +36,8 @@ def main():
     local_addr = 'hans.local'
     local_port = int(os.environ['SERVER_PORT'])
     stt_model_file = os.environ['STT_MODEL_FILE']
+    cert_file = os.environ.get('CERT_FILE', 'certs/hans.local.pem')
+    key_file = os.environ.get('KEY_FILE', 'certs/hans.local-key.pem')
 
     vad_model = load_silero_vad()
     voice_detector = VoiceDetector(vad_model)
@@ -59,8 +61,8 @@ def main():
         for packet in listen_for_client_audio(
             local_addr,
             local_port,
-            certfile='certs/hans.local.pem',
-            keyfile='certs/hans.local-key.pem',
+            cert_file=cert_file,
+            key_file=key_file,
         ):
             audio_bytes = packet.audio_bytes
             # TODO: Collect frames until we have enough, don't assume a frame is perfect
