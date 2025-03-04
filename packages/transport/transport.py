@@ -62,21 +62,21 @@ def _stream_client_audio(
 
 
 def listen_for_client_audio(
-    local_addr: str, local_port: int, certfile: str, keyfile: str
+    local_addr: str, local_port: int, cert_file: str, key_file: str
 ) -> Generator[ClientAudioPacket, None, None]:
     return retry_generator_with_backoff(
-        _listen_for_client_audio, local_addr, local_port, certfile, keyfile
+        _listen_for_client_audio, local_addr, local_port, cert_file, key_file
     )
 
 
 def _listen_for_client_audio(
     local_addr: str,
     local_port: int,
-    certfile: str,
-    keyfile: str,
+    cert_file: str,
+    key_file: str,
 ) -> Generator[ClientAudioPacket, None, None]:
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.load_cert_chain(certfile, keyfile)
+    context.load_cert_chain(cert_file, key_file)
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as unsecured_sock:
         unsecured_sock.bind((local_addr, local_port))
