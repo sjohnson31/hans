@@ -281,7 +281,7 @@ namespace grammar_parser {
             return state;
         } catch (const std::exception & err) {
             fprintf(stderr, "%s: error parsing grammar: %s\n", __func__, err.what());
-            return parse_state();
+            throw err;
         }
     }
 

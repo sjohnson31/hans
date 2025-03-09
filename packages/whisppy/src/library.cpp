@@ -95,7 +95,7 @@ namespace whisppy
         fprintf(stderr, "probability_min: %f, prob_sum: %f\n", p_min, p_sum);
 
         // TODO: Return the probability instead of making the decision here
-        if (p_min < 99.0f)
+        if (p_min < 95.0f)
         {
             return "";
         }
