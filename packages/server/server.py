@@ -16,8 +16,12 @@ from src.voice_detector import VoiceDetector
 # Backus–Naur form grammar for commands
 # https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
 GRAMMAR = """
-root ::= "Hey Hans, set a " duration " timer."
-duration ::= number " " ("second" | "minute" | "hour") (" and " number " hour")?
+root ::= wake " " command
+wake ::= "Hey Hans,"
+command ::= timer
+timer ::= "set a " ( duration " timer." | "timer for " duration ".")
+duration ::= number " " time-unit (" and " number " " time-unit)?
+time-unit ::= ("second" | "minute" | "hour") [s]?
 number ::= [0-9] [0-9]? [0-9]?
 """
 
