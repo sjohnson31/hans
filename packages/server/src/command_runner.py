@@ -1,17 +1,11 @@
 from datetime import datetime
 import queue
-import re
 import threading
 import time
 from typing import Any
 
 from durations_nlp import Duration
 from durations_nlp.exceptions import ScaleFormatError
-from number_parser import parse as replace_textual_numbers
-
-# Have to replace the word "seconds", because number_parser
-# will turn it into a number
-SECONDS_UNITS_REPLACEMENT = '__SECONDS_UNITS__'
 
 
 def make_duration_string(duration: Duration) -> str:
@@ -23,6 +17,7 @@ def make_duration_string(duration: Duration) -> str:
 
 
 def run_command(command_text: str, message_q: queue.Queue, sender_addr: Any) -> bool:
+    command_text = command_text.removeprefix('Hey Hans, ')
     return run_timer_command(command_text, message_q, sender_addr)
 
 
@@ -34,33 +29,32 @@ def dumb_timer(seconds: int, message_q: queue.Queue, sender_addr: Any):
 def run_timer_command(
     command_text: str, message_q: queue.Queue, sender_addr: Any
 ) -> bool:
-    command_text = replace_textual_numbers(
-        command_text.replace('-', ' ')
-        .replace('.', '')
-        .replace('second', SECONDS_UNITS_REPLACEMENT)
+    if 'timer' not in command_text:
+        return False
+
+    duration_words = (
+        command_text.removeprefix('set a ')
+        .removeprefix('timer for ')
+        .removesuffix('.')
+        .removesuffix(' timer')
     )
-    match = re.search('\d', command_text)
-    if not match:
-        return False
-    start, _ = match.span()
-    match = re.search('time[r]?', command_text)
-    if not match:
-        return False
-    end, _ = match.span()
 
-    if start >= end:
-        print(f'Failed {start=}, {end=}')
-        return False
+    if 'and a half' in duration_words:
+        if 'hour' in duration_words:
+            addition = '30 minutes'
+        elif 'minute' in duration_words:
+            addition = '30 seconds'
+        elif 'second':
+            addition = '500 milliseconds'
+        else:
+            return False
 
+        duration_words = f'{duration_words.replace("and a half", "")} and {addition}'
     try:
-        duration_words = command_text[start:end].replace(
-            SECONDS_UNITS_REPLACEMENT, 'second'
-        )
-        print(f'Success {duration_words=}')
         duration = Duration(duration_words)
-        print(f'Double success {duration=}')
+        print(f'Successfully found duration: {duration=}')
     except ScaleFormatError:
-        print('Failed to get duration')
+        print(f'Failed to get duration {duration_words}')
         return False
 
     dur_str = make_duration_string(duration)
