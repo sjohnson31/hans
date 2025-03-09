@@ -13,7 +13,7 @@ END_INDICATOR = 2
 MAX_PACKET_SIZE = 65_507
 AUDIO_CHUNK_SIZE = 4096
 
-HEADER_FMT = '<hLH'
+HEADER_FMT = '<hH'
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
 
 
@@ -36,7 +36,6 @@ def _stream_client_audio(
     context = ssl.create_default_context()
     with socket.create_connection((addr, port), timeout=1.5) as unsecured_sock:
         with context.wrap_socket(unsecured_sock, server_hostname=addr) as sock:
-            frame_num = 0
             audio_data = bytearray()
             fmt = f'{HEADER_FMT}{AUDIO_CHUNK_SIZE}h'
 
@@ -50,15 +49,8 @@ def _stream_client_audio(
                     audio_data = audio_data[AUDIO_CHUNK_SIZE:]
 
                     sock.send(
-                        struct.pack(
-                            fmt, FRAME_INDICATOR, frame_num, AUDIO_CHUNK_SIZE, *chunk
-                        )
+                        struct.pack(fmt, FRAME_INDICATOR, AUDIO_CHUNK_SIZE, *chunk)
                     )
-
-                    if frame_num >= MAX_COUNTER:
-                        frame_num = 0
-                    else:
-                        frame_num += 1
 
 
 def listen_for_client_audio(
@@ -83,7 +75,6 @@ def _listen_for_client_audio(
         unsecured_sock.listen(1)
         with context.wrap_socket(unsecured_sock, server_side=True) as sock:
             conn, sender_addr = sock.accept()
-            last_frame_num = None
             conn.settimeout(1.5)
 
             while True:
@@ -93,23 +84,11 @@ def _listen_for_client_audio(
                 if not data:
                     raise ConnectionError('Connection closed')
 
-                indicator, frame_num, audio_length = struct.unpack_from(
-                    HEADER_FMT, data
-                )
+                indicator, audio_length = struct.unpack_from(HEADER_FMT, data)
                 audio_fmt = f'<{audio_length}h'
                 audio_bytes = bytes(
                     struct.unpack_from(audio_fmt, data, offset=HEADER_SIZE)
                 )
 
-                if last_frame_num is not None:
-                    if frame_num != last_frame_num + 1 or (
-                        last_frame_num == MAX_COUNTER and frame_num != 0
-                    ):
-                        print(f'WARNING: frame {frame_num} received out of order')
-                        last_frame_num = frame_num
-                        continue
-
                 if indicator == FRAME_INDICATOR:
                     yield ClientAudioPacket(sender_addr, audio_bytes)
-
-                last_frame_num = frame_num
