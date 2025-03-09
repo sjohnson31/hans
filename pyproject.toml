@@ -9,5 +9,25 @@ dependencies = []
 [tool.uv.workspace]
 members = ["packages/*"]
 
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["src"]
+
 [tool.ruff.format]
 quote-style = "single"
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]

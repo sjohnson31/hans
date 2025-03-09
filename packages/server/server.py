@@ -2,16 +2,16 @@ import os
 import queue
 import threading
 
-import torch
 import numpy as np
-from TTS.api import TTS
 from silero_vad import load_silero_vad
-from whisppy import transcriber
+import torch
 from transport import listen_for_client_audio
+from TTS.api import TTS
+from whisppy import transcriber
 
+from src.command_runner import run_command
 from src.message_sender import send_audio_message
 from src.voice_detector import VoiceDetector
-from src.command_runner import run_command
 
 # Backus–Naur form grammar for commands
 # https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
@@ -84,7 +84,7 @@ def main():
                 )
                 # Make the audio at least one second long
                 audio_data = np.concatenate(
-                    (audio_data, np.zeros((int(16000) + 10))), dtype=np.float32
+                    (audio_data, np.zeros(16000 + 10)), dtype=np.float32
                 )
                 text = t.transcribe(
                     audio_data, initial_prompt=INITIAL_PROMPT, grammar_rule=GRAMMAR_ROOT

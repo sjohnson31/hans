@@ -1,10 +1,11 @@
 import enum
-import os
 from enum import Enum
-import sounddevice as sd
+import os
+import wave
+
 import numpy as np
 from numpy._typing import DTypeLike
-import wave
+import sounddevice as sd
 
 
 class DebugMode(Enum):

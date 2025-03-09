@@ -1,9 +1,10 @@
+from collections.abc import Generator
 from dataclasses import dataclass
 import queue
-import struct
 import socket
 import ssl
-from typing import Generator, NoReturn
+import struct
+from typing import NoReturn
 
 from src.retry import retry_generator_with_backoff, retry_with_backoff
 
@@ -34,23 +35,23 @@ def _stream_client_audio(
     audio_frame_q: queue.Queue[bytes], addr: str, port: str
 ) -> NoReturn:
     context = ssl.create_default_context()
-    with socket.create_connection((addr, port), timeout=1.5) as unsecured_sock:
-        with context.wrap_socket(unsecured_sock, server_hostname=addr) as sock:
-            audio_data = bytearray()
-            fmt = f'{HEADER_FMT}{AUDIO_CHUNK_SIZE}h'
+    with (
+        socket.create_connection((addr, port), timeout=1.5) as unsecured_sock,
+        context.wrap_socket(unsecured_sock, server_hostname=addr) as sock,
+    ):
+        audio_data = bytearray()
+        fmt = f'{HEADER_FMT}{AUDIO_CHUNK_SIZE}h'
 
-            while True:
-                frame = audio_frame_q.get()
-                audio_data.extend(frame)
-                if len(audio_data) > AUDIO_CHUNK_SIZE:
-                    print('Got frame, sending')
+        while True:
+            frame = audio_frame_q.get()
+            audio_data.extend(frame)
+            if len(audio_data) > AUDIO_CHUNK_SIZE:
+                print('Got frame, sending')
 
-                    chunk = audio_data[:AUDIO_CHUNK_SIZE]
-                    audio_data = audio_data[AUDIO_CHUNK_SIZE:]
+                chunk = audio_data[:AUDIO_CHUNK_SIZE]
+                audio_data = audio_data[AUDIO_CHUNK_SIZE:]
 
-                    sock.send(
-                        struct.pack(fmt, FRAME_INDICATOR, AUDIO_CHUNK_SIZE, *chunk)
-                    )
+                sock.send(struct.pack(fmt, FRAME_INDICATOR, AUDIO_CHUNK_SIZE, *chunk))
 
 
 def listen_for_client_audio(

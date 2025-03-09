@@ -1,5 +1,5 @@
-import time
 from collections.abc import Callable, Generator
+import time
 from typing import ParamSpec, TypeVar
 
 MAX_SLEEP_SECS = 5
