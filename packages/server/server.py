@@ -20,7 +20,15 @@ root ::= wake " " command
 wake ::= "Hey Hans,"
 command ::= timer
 timer ::= "set a " ( duration " timer." | "timer for " duration ".")
-duration ::= number " " time-unit (" and " number " " time-unit)?
+duration ::= duration-with-halves | duration-without-halves
+# e.g. an hour and a half or one and a half hour
+duration-with-halves ::= ( duration-half-first | duration-half-last )
+# e.g. 30 minutes or 1 hour and 30 minutes
+duration-without-halves ::= number " " time-unit (" and " number " " time-unit)?
+# e.g. one and a half hours
+duration-half-first ::= number " and a half " time-unit 
+# e.g. an hour and a half
+duration-half-last ::= ("a" | "an")? " " time-unit " and a half"
 time-unit ::= ("second" | "minute" | "hour") [s]?
 number ::= [0-9] [0-9]? [0-9]?
 """

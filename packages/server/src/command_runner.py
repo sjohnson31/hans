@@ -35,9 +35,21 @@ def run_timer_command(
     duration_words = (
         command_text.removeprefix('set a ')
         .removeprefix('timer for ')
-        .removesuffix(' timer.')
+        .removesuffix('.')
+        .removesuffix(' timer')
     )
 
+    if 'and a half' in duration_words:
+        if 'hour' in duration_words:
+            addition = '30 minutes'
+        elif 'minute' in duration_words:
+            addition = '30 seconds'
+        elif 'second':
+            addition = '500 milliseconds'
+        else:
+            return False
+
+        duration_words = f'{duration_words.replace("and a half", "")} and {addition}'
     try:
         duration = Duration(duration_words)
         print(f'Successfully found duration: {duration=}')
