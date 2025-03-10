@@ -9,39 +9,9 @@ from transport import listen_for_client_audio
 from TTS.api import TTS
 from whisppy import transcriber
 
-from src.command_runner import run_command
+from src.command_runner import GRAMMAR, GRAMMAR_ROOT, INITIAL_PROMPT, run_command
 from src.message_sender import send_audio_message
 from src.voice_detector import VoiceDetector
-
-# Backus–Naur form grammar for commands
-# https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
-GRAMMAR = """
-root ::= wake " " command
-wake ::= "Hey Hans,"
-command ::= timer
-timer ::= "set a " ( duration " timer." | "timer for " duration ".")
-duration ::= duration-with-halves | duration-without-halves
-# e.g. an hour and a half or one and a half hour
-duration-with-halves ::= ( duration-half-first | duration-half-last )
-# e.g. 30 minutes or 1 hour and 30 minutes
-duration-without-halves ::= number " " time-unit (" and " number " " time-unit)?
-# e.g. one and a half hours
-duration-half-first ::= number " and a half " time-unit 
-# e.g. an hour and a half
-duration-half-last ::= ("a" | "an")? " " time-unit " and a half"
-time-unit ::= ("second" | "minute" | "hour") [s]?
-number ::= [0-9] [0-9]? [0-9]?
-"""
-
-GRAMMAR_ROOT = 'root'
-
-# Transcription examples for expected voice commands
-# Used by whispercpp to guide transcription
-# https://github.com/ggerganov/whisper.cpp/blob/cadfc50eabb46829a0d5ac7ffcb3778ad60a1257/include/whisper.h#L516
-INITIAL_PROMPT = """
-Hey Hans, set a 5 minute timer.
-Hey Hans, set a 15 hour and 3 minute timer.
-"""
 
 
 def main():
