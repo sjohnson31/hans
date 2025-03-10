@@ -13,6 +13,7 @@ dependencies = [
     "tts>=0.22.0",
     "whisppy",
     "transport",
+    "httpx>=0.28.1",
 ]
 
 [tool.uv.sources]

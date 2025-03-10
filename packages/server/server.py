@@ -9,39 +9,12 @@ from transport import listen_for_client_audio
 from TTS.api import TTS
 from whisppy import transcriber
 
-from src.command_runner import run_command
+from src.command_runner import CommandRunner
+from src.commands.groceries.add_to_grocery_list_command import AddToGroceryListCommand
+from src.commands.groceries.tandoor_groceries_client import TandoorGroceriesClient
+from src.commands.timer_command import TimerCommand
 from src.message_sender import send_audio_message
 from src.voice_detector import VoiceDetector
-
-# Backus–Naur form grammar for commands
-# https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
-GRAMMAR = """
-root ::= wake " " command
-wake ::= "Hey Hans,"
-command ::= timer
-timer ::= "set a " ( duration " timer." | "timer for " duration ".")
-duration ::= duration-with-halves | duration-without-halves
-# e.g. an hour and a half or one and a half hour
-duration-with-halves ::= ( duration-half-first | duration-half-last )
-# e.g. 30 minutes or 1 hour and 30 minutes
-duration-without-halves ::= number " " time-unit (" and " number " " time-unit)?
-# e.g. one and a half hours
-duration-half-first ::= number " and a half " time-unit 
-# e.g. an hour and a half
-duration-half-last ::= ("a" | "an")? " " time-unit " and a half"
-time-unit ::= ("second" | "minute" | "hour") [s]?
-number ::= [0-9] [0-9]? [0-9]?
-"""
-
-GRAMMAR_ROOT = 'root'
-
-# Transcription examples for expected voice commands
-# Used by whispercpp to guide transcription
-# https://github.com/ggerganov/whisper.cpp/blob/cadfc50eabb46829a0d5ac7ffcb3778ad60a1257/include/whisper.h#L516
-INITIAL_PROMPT = """
-Hey Hans, set a 5 minute timer.
-Hey Hans, set a 15 hour and 3 minute timer.
-"""
 
 
 def main():
@@ -50,6 +23,15 @@ def main():
     stt_model_file = os.environ['STT_MODEL_FILE']
     cert_file = os.environ.get('CERT_FILE', 'certs/hans.local.pem')
     key_file = os.environ.get('KEY_FILE', 'certs/hans.local-key.pem')
+    tandoor_base_url = os.environ.get('TANDOOR_BASE_URL')
+    tandoor_api_key = os.environ.get('TANDOOR_API_KEY')
+
+    commands = [TimerCommand()]
+    if tandoor_api_key and tandoor_base_url:
+        groceries_client = TandoorGroceriesClient(tandoor_base_url, tandoor_api_key)
+        commands.append(AddToGroceryListCommand(groceries_client))
+
+    command_runner = CommandRunner(commands)
 
     vad_model = load_silero_vad()
     voice_detector = VoiceDetector(vad_model)
@@ -68,7 +50,7 @@ def main():
     )
     sender_t.start()
 
-    with transcriber(stt_model_file, GRAMMAR) as t:
+    with transcriber(stt_model_file, command_runner.grammar) as t:
         print('Server ready')
         for packet in listen_for_client_audio(
             local_addr,
@@ -99,9 +81,11 @@ def main():
                     (audio_data, np.zeros(16000 + 10)), dtype=np.float32
                 )
                 text = t.transcribe(
-                    audio_data, initial_prompt=INITIAL_PROMPT, grammar_rule=GRAMMAR_ROOT
+                    audio_data,
+                    initial_prompt=command_runner.initial_prompt,
+                    grammar_rule=command_runner.grammar_root,
                 )
-                run_command(text, message_q, packet.sender_addr)
+                command_runner.run(text, message_q, packet.sender_addr)
                 frames = bytearray()
 
 
