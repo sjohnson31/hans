@@ -20,7 +20,7 @@ class AddToGroceryListCommand(Command):
     def run(
         self, command_text: str, response_q: Queue[str], sender_addr: tuple[str, int]
     ) -> bool:
-        if 'to the grocery list' not in command_text:
+        if not command_text.endswith(' to the grocery list.'):
             return False
 
         item = command_text.removeprefix('add ').removesuffix(' to the grocery list.')
