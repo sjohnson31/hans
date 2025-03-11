@@ -10,6 +10,8 @@ from TTS.api import TTS
 from whisppy import transcriber
 
 from src.command_runner import CommandRunner
+from src.commands.groceries.add_to_grocery_list_command import AddToGroceryListCommand
+from src.commands.groceries.tandoor_groceries_client import TandoorGroceriesClient
 from src.commands.timer_command import TimerCommand
 from src.message_sender import send_audio_message
 from src.voice_detector import VoiceDetector
@@ -21,7 +23,14 @@ def main():
     stt_model_file = os.environ['STT_MODEL_FILE']
     cert_file = os.environ.get('CERT_FILE', 'certs/hans.local.pem')
     key_file = os.environ.get('KEY_FILE', 'certs/hans.local-key.pem')
+    tandoor_base_url = os.environ.get('TANDOOR_BASE_URL')
+    tandoor_api_key = os.environ.get('TANDOOR_API_KEY')
+
     commands = [TimerCommand()]
+    if tandoor_api_key and tandoor_base_url:
+        groceries_client = TandoorGroceriesClient(tandoor_base_url, tandoor_api_key)
+        commands.append(AddToGroceryListCommand(groceries_client))
+
     command_runner = CommandRunner(commands)
 
     vad_model = load_silero_vad()
