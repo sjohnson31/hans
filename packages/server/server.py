@@ -9,7 +9,8 @@ from transport import listen_for_client_audio
 from TTS.api import TTS
 from whisppy import transcriber
 
-from src.command_runner import GRAMMAR, GRAMMAR_ROOT, INITIAL_PROMPT, run_command
+from src.command_runner import CommandRunner
+from src.commands.timer_command import TimerCommand
 from src.message_sender import send_audio_message
 from src.voice_detector import VoiceDetector
 
@@ -20,6 +21,8 @@ def main():
     stt_model_file = os.environ['STT_MODEL_FILE']
     cert_file = os.environ.get('CERT_FILE', 'certs/hans.local.pem')
     key_file = os.environ.get('KEY_FILE', 'certs/hans.local-key.pem')
+    commands = [TimerCommand()]
+    command_runner = CommandRunner(commands)
 
     vad_model = load_silero_vad()
     voice_detector = VoiceDetector(vad_model)
@@ -38,7 +41,7 @@ def main():
     )
     sender_t.start()
 
-    with transcriber(stt_model_file, GRAMMAR) as t:
+    with transcriber(stt_model_file, command_runner.grammar) as t:
         print('Server ready')
         for packet in listen_for_client_audio(
             local_addr,
@@ -69,9 +72,11 @@ def main():
                     (audio_data, np.zeros(16000 + 10)), dtype=np.float32
                 )
                 text = t.transcribe(
-                    audio_data, initial_prompt=INITIAL_PROMPT, grammar_rule=GRAMMAR_ROOT
+                    audio_data,
+                    initial_prompt=command_runner.initial_prompt,
+                    grammar_rule=command_runner.grammar_root,
                 )
-                run_command(text, message_q, packet.sender_addr)
+                command_runner.run(text, message_q, packet.sender_addr)
                 frames = bytearray()
 
 
