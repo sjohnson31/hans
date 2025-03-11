@@ -83,7 +83,7 @@ namespace whisppy
                 const auto token = whisper_full_get_token_data(ctx, i, j);
 
                 if (token.plog > 0.0f)
-                    exit(0);
+                    throw std::runtime_error("Unexpected error ocurred while transcribing text");
                 logprob_min = std::min(logprob_min, token.plog);
                 logprob_sum += token.plog;
             }
