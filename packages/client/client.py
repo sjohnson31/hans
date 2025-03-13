@@ -19,8 +19,8 @@ def main():
     # Substring of the full device name given in sd.query_devices()
     # See https://python-sounddevice.readthedocs.io/en/0.5.1/api/streams.html#sounddevice.Stream
     # device parameter for more information
-    input_device = os.environ.get('INPUT_DEVICE', 'default')
-    output_device = os.environ.get('OUTPUT_DEVICE', 'default')
+    input_device = os.environ.get('INPUT_DEVICE', sd.default.device[0])
+    output_device = os.environ.get('OUTPUT_DEVICE', sd.default.device[1])
 
     process_thread = threading.Thread(
         target=stream_client_audio, args=(frame_q, server_ip, server_port), daemon=True
