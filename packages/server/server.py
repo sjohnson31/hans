@@ -29,7 +29,10 @@ def main():
     tandoor_base_url = os.environ.get('TANDOOR_BASE_URL')
     tandoor_api_key = os.environ.get('TANDOOR_API_KEY')
     if tandoor_api_key and tandoor_base_url and grocery_list_text_file:
-        sys.exit('Groceries text file and tandoor server cannot both be configured in environment')
+        sys.exit(
+            'Groceries text file and tandoor server cannot both be configured in '
+            'environment'
+        )
 
     commands = [TimerCommand()]
     if grocery_list_text_file or (tandoor_api_key and tandoor_base_url):
