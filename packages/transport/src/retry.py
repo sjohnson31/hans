@@ -33,6 +33,8 @@ def retry_generator_with_backoff(
             yield from func(*args)
         except Exception as e:
             print(e)
-            sleep_secs = min(STARTING_SLEEP_SECS * (2**retries), MAX_SLEEP_SECS)
+            timeout = STARTING_SLEEP_SECS * (2**retries)
+            sleep_secs = min(timeout, MAX_SLEEP_SECS)
             time.sleep(sleep_secs)
-            retries += 1
+            if timeout < MAX_SLEEP_SECS:
+                retries += 1
