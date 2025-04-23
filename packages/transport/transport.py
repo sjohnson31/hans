@@ -4,12 +4,15 @@ from collections.abc import Callable, Generator
 from concurrent.futures import Executor
 from dataclasses import dataclass
 import multiprocessing as mp
+import numpy as np
+from numpy.typing import NDArray
 import queue
 import select
 import socket
 import ssl
 import struct
 import threading
+import traceback
 from typing import NoReturn, Protocol
 
 from src.retry import retry_generator_with_backoff, retry_with_backoff
@@ -90,19 +93,28 @@ def listen_for_clients(
     with (
         socket.socket(socket.AF_INET, socket.SOCK_STREAM) as unsecured_sock,
     ):
+        futures = []
         print('binding', local_addr, local_port)
         unsecured_sock.bind((local_addr, local_port))
         unsecured_sock.listen()
         with context.wrap_socket(unsecured_sock, server_side=True) as sock:
+            sock.settimeout(15)
             sock.listen()
-            sock.settimeout(5)
             while err_q.empty():
                 try:
                     conn, _ = sock.accept()
                 except TimeoutError:
                     continue
                 print('got past accept')
-                executor.submit(handle_connection, args=[conn, conn_cb, err_q])
+                try:
+                    #futures.append(executor.submit(handle_connection, args=[conn, conn_cb, err_q]))
+                    t = threading.Thread(target=handle_connection, args=[conn, conn_cb, err_q], daemon=True)
+                    t.start()
+                    futures.append(t)
+                    print('Task submitted, boss')
+                except:
+                    traceback.print_exc()
+                    raise
 
 
 @dataclass
@@ -113,7 +125,7 @@ class ServerConnection:
 
 def connect_to_server(
     server_addr: str,
-    server_port: str,
+    server_port: int,
     err_q: mp.Queue,
     executor: Executor,
     context: ssl.SSLContext = None,
@@ -161,7 +173,7 @@ def _connect_to_server_once(
         ferry_audio(sock, in_q, out_q, err_q)
 
 
-def ferry_audio(conn, in_q, out_q, err_q: mp.Queue):
+def ferry_audio(conn, in_q: mp.Queue[NDArray[np.int16]], out_q: mp.Queue[NDArray[np.int16]], err_q: mp.Queue) -> None:
     conn.setblocking(False)
     bytes_to_send = bytearray()
     received_bytes = bytearray()
@@ -171,11 +183,16 @@ def ferry_audio(conn, in_q, out_q, err_q: mp.Queue):
         (read_ready, write_ready, []) = select.select(
             [conn, out_q._reader, err_q._reader], out_selections, []
         )
+        print(f'{read_ready=}')
         print('got out of select')
-        if err_q in read_ready:
+        if err_q._reader in read_ready:
             return
         if conn in read_ready:
-            data = conn.recv()
+            try:
+                data = conn.recv()
+            except:
+                traceback.print_exc()
+                continue
 
             if not data:
                 raise RuntimeError('Connection dropped')
@@ -183,24 +200,27 @@ def ferry_audio(conn, in_q, out_q, err_q: mp.Queue):
             received_bytes.extend(data)
 
             if len(received_bytes) > 2:
-                indicator, audio_length = struct.unpack_from(HEADER_FMT, received_bytes)
+                indicator, num_shorts_audio = struct.unpack_from(HEADER_FMT, received_bytes)
+                print(f'{num_shorts_audio=}')
                 if indicator != FRAME_INDICATOR:
                     raise RuntimeError('Got invalid packet')
 
-                if len(received_bytes) - HEADER_SIZE >= audio_length:
+                if len(received_bytes) - HEADER_SIZE >= num_shorts_audio * 2:
                     # We have a whole packet, process it
-                    audio_bytes: tuple[int] = struct.unpack_from(
-                        f'<{audio_length}h', data, offset=HEADER_SIZE
-                    )
-                    in_q.put_nowait(audio_bytes)
-                    received_bytes = received_bytes[HEADER_SIZE + audio_length :]
+                    audio = np.frombuffer(data, dtype=np.int16, offset=HEADER_SIZE)
+                    print('audio received')
+                    in_q.put_nowait(audio)
+                    received_bytes = received_bytes[HEADER_SIZE + len(audio) :]
 
-        if out_q in read_ready:
+        if out_q._reader in read_ready:
             # This should not throw because we were just woken up to handle
             # something being put on the queue
             data = out_q.get_nowait()
-            bytes_to_send.extend(struct.pack('<L', len(data)))
-            bytes_to_send.extend(data)
+            num_shorts = len(data)
+            data_bytes = data.tobytes()
+            assert len(data_bytes) % 2 == 0, 'Length of audio data must be divisible by 2'
+            bytes_to_send.extend(struct.pack(HEADER_FMT, FRAME_INDICATOR, num_shorts))
+            bytes_to_send.extend(data_bytes)
         if conn in write_ready or bytes_to_send:
             bytes_sent = conn.send(bytes_to_send)
             bytes_to_send = bytes_to_send[bytes_sent:]
@@ -219,10 +239,15 @@ def handle_connection(
         target=conn_handler_cb, args=[in_q, out_q, stop_event], daemon=True
     )
     t.start()
+    print('Thread started')
     try:
         ferry_audio(conn=conn, in_q=in_q, out_q=out_q, err_q=err_q)
+    except:
+        traceback.print_exc()
+        raise
     finally:
         # TODO: Logs???
+        print('Exiting handle_connection')
         stop_event.set()
         t.join(timeout_secs)
 
