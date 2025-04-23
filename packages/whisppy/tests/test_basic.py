@@ -1,6 +1,6 @@
+from os.path import dirname
 import wave
 from pathlib import Path
-from os.path import dirname
 
 import pytest
 import numpy as np

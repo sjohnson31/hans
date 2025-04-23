@@ -1,0 +1,18 @@
+[project]
+name = "frame"
+version = "0.1.0"
+description = "Statusboard for hans on chromecast"
+readme = "README.md"
+authors = [{ name = "Sam Burba", email = "github@samburba.com" }]
+requires-python = ">=3.11.10"
+dependencies = [
+    "fastapi[standard]>=0.115.12",
+    "pychromecast>=14.0.7",
+]
+
+[project.scripts]
+frame = "frame:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
