@@ -27,9 +27,11 @@ class CommandRunner:
         )
 
     def run(
-        self, command_text: str, message_q: queue.Queue, sender_addr: tuple[str, int]
+        self,
+        command_text: str,
+        message_q: queue.Queue[str],
     ) -> None:
         command_text = command_text.removeprefix('Hey Hans, ')
         for command in self.commands:
-            if command.run(command_text, message_q, sender_addr):
+            if command.run(command_text, message_q):
                 break

@@ -17,9 +17,9 @@ def _make_duration_string(duration: Duration) -> str:
     return f'{minutes} minute and {seconds} second'
 
 
-def dumb_timer(seconds: int, message_q: Queue, sender_addr: tuple[str, int]):
+def dumb_timer(seconds: int, message_q: Queue):
     time.sleep(seconds)
-    message_q.put(('Your timer has expired', sender_addr))
+    message_q.put('Your timer has expired')
 
 
 class TimerCommand(Command):
@@ -44,9 +44,7 @@ class TimerCommand(Command):
         'set a 15 hour and 3 minute timer.',
     ]
 
-    def run(
-        self, command_text: str, response_q: Queue[str], sender_addr: tuple[str, int]
-    ) -> bool:
+    def run(self, command_text: str, response_q: Queue[str]) -> bool:
         if 'timer' not in command_text:
             return False
 
@@ -79,10 +77,10 @@ class TimerCommand(Command):
 
         dur_str = _make_duration_string(duration)
         print(f'Setting a timer for {dur_str} at {datetime.now()}')
-        response_q.put((f'Setting a {dur_str} timer', sender_addr))
+        response_q.put(f'Setting a {dur_str} timer')
         t = threading.Thread(
             target=dumb_timer,
-            args=[duration.to_seconds(), response_q, sender_addr],
+            args=[duration.to_seconds(), response_q],
             daemon=True,
         )
         t.start()

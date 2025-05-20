@@ -1,12 +1,15 @@
+from concurrent.futures import ThreadPoolExecutor
+import multiprocessing as mp
 import os
 import queue
 import sys
 import threading
 
 import numpy as np
+from numpy.typing import NDArray
 from silero_vad import load_silero_vad
 import torch
-from transport import listen_for_client_audio
+from transport import listen_for_clients
 from TTS.api import TTS
 from whisppy import transcriber
 
@@ -51,54 +54,69 @@ def main():
     tts_model = 'tts_models/en/jenny/jenny'
     tts = TTS(tts_model).to(device)
 
-    frames = bytearray()
-
-    num_voiceless_frames_seen = 0
-
-    message_q = queue.Queue()
-    sender_t = threading.Thread(
-        target=send_audio_message, args=[message_q, tts], daemon=True
-    )
-    sender_t.start()
-
     with transcriber(stt_model_file, command_runner.grammar) as t:
         print('Server ready')
-        for packet in listen_for_client_audio(
+
+        def on_connection(
+            in_q: mp.Queue[NDArray[np.int16]],
+            out_q: mp.Queue[NDArray[np.int16]],
+            err_q: mp.Queue[Exception],
+        ):
+            message_q = queue.Queue()
+            sender_t = threading.Thread(
+                target=send_audio_message, args=[message_q, tts, out_q], daemon=True
+            )
+            sender_t.start()
+            frames = bytearray()
+            num_voiceless_frames_seen = 0
+            frame = bytearray()
+            while True:
+                incoming_bytes: NDArray[np.int16] = in_q.get()
+                frame.extend(incoming_bytes)
+                if len(frame) < 1024:
+                    continue
+
+                audio_bytes = frame[:1024*(len(frame) // 1024)]
+                frame = frame[len(audio_bytes):]
+
+                frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
+                if frame_is_voice:
+                    num_voiceless_frames_seen = 0
+                else:
+                    num_voiceless_frames_seen += 1
+
+                if frame_is_voice or (frames and num_voiceless_frames_seen < 5):
+                    frames.extend(audio_bytes)
+
+                if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
+                    print('decided to transcribe')
+                    audio_data = (
+                        np.frombuffer(frames, np.int16).astype(np.float32)
+                        / np.iinfo(np.int16).max
+                    )
+                    # Make the audio at least one second long
+                    audio_data = np.concatenate(
+                        (audio_data, np.zeros(16000 + 10)), dtype=np.float32
+                    )
+                    text = t.transcribe(
+                        audio_data,
+                        initial_prompt=command_runner.initial_prompt,
+                        grammar_rule=command_runner.grammar_root,
+                    )
+                    command_runner.run(text, message_q)
+                    frames = bytearray()
+
+
+        executor = ThreadPoolExecutor()
+        listen_for_clients(
             local_addr,
             local_port,
             cert_file=cert_file,
             key_file=key_file,
-        ):
-            audio_bytes = packet.audio_bytes
-            # TODO: Collect frames until we have enough, don't assume a frame is perfect
-            # OR MAYBE DO?!?!?
-            frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
-            if frame_is_voice:
-                num_voiceless_frames_seen = 0
-            else:
-                num_voiceless_frames_seen += 1
-
-            if frame_is_voice or (frames and num_voiceless_frames_seen < 5):
-                frames.extend(audio_bytes)
-
-            if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
-                print('decided to transcribe')
-                audio_data = (
-                    np.frombuffer(frames, np.int16).astype(np.float32)
-                    / np.iinfo(np.int16).max
-                )
-                # Make the audio at least one second long
-                audio_data = np.concatenate(
-                    (audio_data, np.zeros(16000 + 10)), dtype=np.float32
-                )
-                text = t.transcribe(
-                    audio_data,
-                    initial_prompt=command_runner.initial_prompt,
-                    grammar_rule=command_runner.grammar_root,
-                )
-                command_runner.run(text, message_q, packet.sender_addr)
-                frames = bytearray()
-
+            conn_cb=on_connection,
+            executor=executor,
+            err_q=mp.Queue(),
+        )
 
 if __name__ == '__main__':
     main()

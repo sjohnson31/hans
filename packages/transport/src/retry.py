@@ -1,7 +1,7 @@
 from collections.abc import Callable, Generator
+import multiprocessing as mp
 import time
 from typing import ParamSpec, TypeVar
-import multiprocessing as mp
 
 MAX_SLEEP_SECS = 5
 STARTING_SLEEP_SECS = 0.1

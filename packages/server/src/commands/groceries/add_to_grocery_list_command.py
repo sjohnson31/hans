@@ -18,7 +18,7 @@ class AddToGroceryListCommand(Command):
         self.groceries_client = groceries_client
 
     def run(
-        self, command_text: str, response_q: Queue[str], sender_addr: tuple[str, int]
+        self, command_text: str, response_q: Queue[str]
     ) -> bool:
         if not command_text.endswith(' to the grocery list.'):
             return False
@@ -28,5 +28,5 @@ class AddToGroceryListCommand(Command):
         print(f'Adding {item} to the grocery list')
         self.groceries_client.add_to_shopping_list(item)
 
-        response_q.put((f'Added {item}.', sender_addr))
+        response_q.put(f'Added {item}.')
         return True

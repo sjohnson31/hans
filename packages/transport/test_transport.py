@@ -12,7 +12,6 @@ import ssl
 from tempfile import NamedTemporaryFile
 import threading
 import time
-import wave
 
 import numpy as np
 import pytest
@@ -84,15 +83,11 @@ def test_transport(unused_port, ssl_key_pair):
             executor=executor,
         )
 
-        context = ssl.create_default_context()
-        #context.load_cert_chain(ssl_key_pair.cert_file, keyfile=ssl_key_pair.key_file)
-        #context.load_verify_locations()
         client_conn = connect_to_server(
             server_addr='hans.local',
             server_port=unused_port,
             err_q=err_q,
             executor=executor,
-            context=context,
         )
 
         try:

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 SAMPLING_RATE = 16000
-CONFIDENCE_CUTOFF = 0.6
+CONFIDENCE_CUTOFF = 0.8
 
 
 class VoiceDetector:

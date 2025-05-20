@@ -1,30 +1,27 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from concurrent.futures import Executor
 from dataclasses import dataclass
 import multiprocessing as mp
-import numpy as np
-from numpy.typing import NDArray
-import queue
 import select
 import socket
 import ssl
 import struct
 import threading
 import traceback
-from typing import NoReturn, Protocol
+from typing import Protocol
+
+import numpy as np
+from numpy.typing import NDArray
 
 from src.retry import retry_generator_with_backoff, retry_with_backoff
 
-MAX_COUNTER = 4_294_967_295
 FRAME_INDICATOR = 1
-END_INDICATOR = 2
-MAX_PACKET_SIZE = 65_507
-AUDIO_CHUNK_SIZE = 4096
+MAX_FRAME_SIZE = 4_294_967_295
 
 # Stop Indicator, then audio length
-HEADER_FMT = '<hH'
+HEADER_FMT = '<hL'
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
 
 
@@ -35,38 +32,12 @@ class ClientAudioPacket:
     audio_bytes: bytes
 
 
-def stream_client_audio(
-    audio_frame_q: queue.Queue[bytes], addr: str, port: str
-) -> NoReturn:
-    return retry_with_backoff(_stream_client_audio, audio_frame_q, addr, port)
-
-
-def _stream_client_audio(
-    audio_frame_q: queue.Queue[bytes], addr: str, port: str
-) -> NoReturn:
-    context = ssl.create_default_context()
-    with (
-        socket.create_connection((addr, port), timeout=1.5) as unsecured_sock,
-        context.wrap_socket(unsecured_sock, server_hostname=addr) as sock,
-    ):
-        audio_data = bytearray()
-        fmt = f'{HEADER_FMT}{AUDIO_CHUNK_SIZE}h'
-
-        while True:
-            frame = audio_frame_q.get()
-            audio_data.extend(frame)
-            if len(audio_data) > AUDIO_CHUNK_SIZE:
-                print('Got frame, sending')
-
-                chunk = audio_data[:AUDIO_CHUNK_SIZE]
-                audio_data = audio_data[AUDIO_CHUNK_SIZE:]
-
-                sock.send(struct.pack(fmt, FRAME_INDICATOR, AUDIO_CHUNK_SIZE, *chunk))
-
-
 class ConnectionHandler(Protocol):
     def __call__(
-        self, in_q: mp.Queue[bytes], out_q: mp.Queue[bytes], stop_event: threading.Event
+        self,
+        in_q: mp.Queue[NDArray[np.int16]],
+        out_q: mp.Queue[NDArray[np.int16]],
+        err_q: mp.Queue[Exception],
     ):
         pass
 
@@ -85,9 +56,7 @@ def listen_for_clients(
     try:
         context.load_cert_chain(cert_file, key_file)
     except BaseException as e:
-        print(cert_file)
-        print(key_file)
-        print(e)
+        raise e
 
     print('loaded cert chain')
     with (
@@ -98,7 +67,7 @@ def listen_for_clients(
         unsecured_sock.bind((local_addr, local_port))
         unsecured_sock.listen()
         with context.wrap_socket(unsecured_sock, server_side=True) as sock:
-            sock.settimeout(15)
+            sock.settimeout(5)
             sock.listen()
             while err_q.empty():
                 try:
@@ -107,11 +76,13 @@ def listen_for_clients(
                     continue
                 print('got past accept')
                 try:
-                    #futures.append(executor.submit(handle_connection, args=[conn, conn_cb, err_q]))
-                    t = threading.Thread(target=handle_connection, args=[conn, conn_cb, err_q], daemon=True)
+                    t = threading.Thread(
+                        target=handle_connection,
+                        args=[conn, conn_cb, err_q],
+                        daemon=True,
+                    )
                     t.start()
                     futures.append(t)
-                    print('Task submitted, boss')
                 except:
                     traceback.print_exc()
                     raise
@@ -119,8 +90,8 @@ def listen_for_clients(
 
 @dataclass
 class ServerConnection:
-    in_q: mp.Queue
-    out_q: mp.Queue[bytes]
+    in_q: mp.Queue[NDArray[np.int16]]
+    out_q: mp.Queue[NDArray[np.int16]]
 
 
 def connect_to_server(
@@ -173,18 +144,20 @@ def _connect_to_server_once(
         ferry_audio(sock, in_q, out_q, err_q)
 
 
-def ferry_audio(conn, in_q: mp.Queue[NDArray[np.int16]], out_q: mp.Queue[NDArray[np.int16]], err_q: mp.Queue) -> None:
+def ferry_audio(
+    conn,
+    in_q: mp.Queue[NDArray[np.int16]],
+    out_q: mp.Queue[NDArray[np.int16]],
+    err_q: mp.Queue,
+) -> None:
     conn.setblocking(False)
     bytes_to_send = bytearray()
     received_bytes = bytearray()
     while True:
         out_selections = [conn] if bytes_to_send else []
-        print('starting select')
         (read_ready, write_ready, []) = select.select(
             [conn, out_q._reader, err_q._reader], out_selections, []
         )
-        print(f'{read_ready=}')
-        print('got out of select')
         if err_q._reader in read_ready:
             return
         if conn in read_ready:
@@ -200,17 +173,21 @@ def ferry_audio(conn, in_q: mp.Queue[NDArray[np.int16]], out_q: mp.Queue[NDArray
             received_bytes.extend(data)
 
             if len(received_bytes) > 2:
-                indicator, num_shorts_audio = struct.unpack_from(HEADER_FMT, received_bytes)
-                print(f'{num_shorts_audio=}')
+                indicator, num_shorts_audio = struct.unpack_from(
+                    HEADER_FMT, received_bytes
+                )
                 if indicator != FRAME_INDICATOR:
                     raise RuntimeError('Got invalid packet')
 
                 if len(received_bytes) - HEADER_SIZE >= num_shorts_audio * 2:
                     # We have a whole packet, process it
-                    audio = np.frombuffer(data, dtype=np.int16, offset=HEADER_SIZE)
-                    print('audio received')
+                    audio_segment = received_bytes[
+                        HEADER_SIZE : HEADER_SIZE + num_shorts_audio * 2
+                    ]
+                    audio = np.frombuffer(audio_segment, dtype=np.int16)
                     in_q.put_nowait(audio)
-                    received_bytes = received_bytes[HEADER_SIZE + len(audio) :]
+                    received_bytes = received_bytes[HEADER_SIZE + len(audio_segment) :]
+
 
         if out_q._reader in read_ready:
             # This should not throw because we were just woken up to handle
@@ -218,7 +195,13 @@ def ferry_audio(conn, in_q: mp.Queue[NDArray[np.int16]], out_q: mp.Queue[NDArray
             data = out_q.get_nowait()
             num_shorts = len(data)
             data_bytes = data.tobytes()
-            assert len(data_bytes) % 2 == 0, 'Length of audio data must be divisible by 2'
+            assert len(data_bytes) % 2 == 0, (
+                'Length of audio data must be divisible by 2'
+            )
+            if (num_shorts * 2) > MAX_FRAME_SIZE:
+                raise RuntimeError(
+                    f'Audio data too large: {num_shorts * 2} > {MAX_FRAME_SIZE}'
+                )
             bytes_to_send.extend(struct.pack(HEADER_FMT, FRAME_INDICATOR, num_shorts))
             bytes_to_send.extend(data_bytes)
         if conn in write_ready or bytes_to_send:
@@ -277,7 +260,7 @@ def _listen_for_client_audio(
             conn.settimeout(1.5)
 
             while True:
-                data = conn.recv(MAX_PACKET_SIZE)
+                data = conn.recv(MAX_FRAME_SIZE)
                 sender_addr = (sender_addr[0], local_port)
 
                 if not data:
