@@ -1,3 +1,4 @@
+from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing as mp
 import os
