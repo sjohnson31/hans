@@ -4,6 +4,7 @@ from collections.abc import Generator
 from concurrent.futures import Executor
 from dataclasses import dataclass
 import multiprocessing as mp
+import queue
 import socket
 import ssl
 import struct
@@ -149,54 +150,53 @@ def ferry_audio(
     out_q: mp.Queue[NDArray[np.int16]],
     err_q: mp.Queue,
 ) -> None:
-    conn.setblocking(False)
+    blocking_timeout = 0.01
+    #conn.setblocking(False)
+    conn.settimeout(blocking_timeout)
     bytes_to_send = bytearray()
     received_bytes = bytearray()
     while True:
-        #out_selections = [conn] if bytes_to_send else []
-        #(read_ready, write_ready, []) = select.select(
-            #[conn, out_q._reader, err_q._reader], out_selections, []
-        #)
-        selections = [conn, out_q._reader, err_q._reader]
-        ready = mp.connection.wait(selections)
-        if err_q._reader in ready:
+        try:
+            err_q.get(timeout=blocking_timeout)
             return
-        if conn in ready:
-            try:
-                data = conn.recv()
-            except TimeoutError:
-                pass
-            except:
-                # This is to skip an SSL error which seems to just happen once
-                # TODO: fix source of error and remove this
-                traceback.print_exc()
-                continue
-            else:
-                if not data:
-                    raise RuntimeError('Connection dropped')
+        except queue.Empty:
+            pass
+        try:
+            data = conn.recv()
+        except TimeoutError:
+            pass
+        except:
+            # This is to skip an SSL error which seems to just happen once
+            # TODO: fix source of error and remove this
+            traceback.print_exc()
+            continue
+        else:
+            if not data:
+                raise RuntimeError('Connection dropped')
 
-                received_bytes.extend(data)
+            received_bytes.extend(data)
 
-                if len(received_bytes) > 2:
-                    indicator, num_shorts_audio = struct.unpack_from(
-                        HEADER_FMT, received_bytes
-                    )
-                    if indicator != FRAME_INDICATOR:
-                        raise RuntimeError('Got invalid packet')
+            if len(received_bytes) > 2:
+                indicator, num_shorts_audio = struct.unpack_from(
+                    HEADER_FMT, received_bytes
+                )
+                if indicator != FRAME_INDICATOR:
+                    raise RuntimeError('Got invalid packet')
 
-                    if len(received_bytes) - HEADER_SIZE >= num_shorts_audio * 2:
-                        # We have a whole packet, process it
-                        audio_segment = received_bytes[
-                            HEADER_SIZE : HEADER_SIZE + num_shorts_audio * 2
-                        ]
-                        audio = np.frombuffer(audio_segment, dtype=np.int16)
-                        in_q.put_nowait(audio)
-                        received_bytes = received_bytes[HEADER_SIZE + len(audio_segment) :]
+                if len(received_bytes) - HEADER_SIZE >= num_shorts_audio * 2:
+                    # We have a whole packet, process it
+                    audio_segment = received_bytes[
+                        HEADER_SIZE : HEADER_SIZE + num_shorts_audio * 2
+                    ]
+                    audio = np.frombuffer(audio_segment, dtype=np.int16)
+                    in_q.put_nowait(audio)
+                    received_bytes = received_bytes[HEADER_SIZE + len(audio_segment) :]
 
-        if out_q._reader in ready:
-            # This should not throw because we were just woken up to handle
-            # something being put on the queue
-            data = out_q.get_nowait()
+        try:
+            data = out_q.get(timeout=blocking_timeout)
+        except queue.Empty:
+            pass
+        else:
             num_shorts = len(data)
             data_bytes = data.tobytes()
             assert len(data_bytes) % 2 == 0, (
@@ -208,7 +208,7 @@ def ferry_audio(
                 )
             bytes_to_send.extend(struct.pack(HEADER_FMT, FRAME_INDICATOR, num_shorts))
             bytes_to_send.extend(data_bytes)
-        if bytes_to_send and conn in ready:
+        if bytes_to_send:
             try:
                 bytes_sent = conn.send(bytes_to_send)
             except TimeoutError:
