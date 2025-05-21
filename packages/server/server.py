@@ -1,16 +1,14 @@
-from __future__ import annotations
-from concurrent.futures import ThreadPoolExecutor
-import multiprocessing as mp
+import asyncio
+from collections.abc import AsyncIterator
 import os
-import queue
 import sys
-import threading
+from typing import NoReturn
 
 import numpy as np
 from numpy.typing import NDArray
 from silero_vad import load_silero_vad
 import torch
-from transport import listen_for_clients
+from transport2 import serve
 from TTS.api import TTS
 from whisppy import transcriber
 
@@ -19,11 +17,15 @@ from src.commands.groceries.add_to_grocery_list_command import AddToGroceryListC
 from src.commands.groceries.tandoor_groceries_client import TandoorGroceriesClient
 from src.commands.groceries.text_file_groceries_client import TextFileGroceriesClient
 from src.commands.timer_command import TimerCommand
-from src.message_sender import send_audio_message
+from src.message_sender import text_to_audio
 from src.voice_detector import VoiceDetector
 
 
-def main():
+def main() -> NoReturn:
+    asyncio.run(amain())
+
+
+async def amain() -> NoReturn:
     local_addr = 'hans.local'
     local_port = int(os.environ['SERVER_PORT'])
     stt_model_file = os.environ['STT_MODEL_FILE']
@@ -32,6 +34,7 @@ def main():
     grocery_list_text_file = os.environ.get('GROCERY_LIST_TEXT_FILE')
     tandoor_base_url = os.environ.get('TANDOOR_BASE_URL')
     tandoor_api_key = os.environ.get('TANDOOR_API_KEY')
+
     if tandoor_api_key and tandoor_base_url and grocery_list_text_file:
         sys.exit(
             'Groceries text file and tandoor server cannot both be configured in '
@@ -39,6 +42,7 @@ def main():
         )
 
     commands = [TimerCommand()]
+
     if grocery_list_text_file or (tandoor_api_key and tandoor_base_url):
         if grocery_list_text_file:
             groceries_client = TextFileGroceriesClient(grocery_list_text_file)
@@ -55,69 +59,60 @@ def main():
     tts_model = 'tts_models/en/jenny/jenny'
     tts = TTS(tts_model).to(device)
 
-    with transcriber(stt_model_file, command_runner.grammar) as t:
-        print('Server ready')
+    async def handle_client(
+        audio_stream: AsyncIterator[bytes],
+        out_q: asyncio.Queue[NDArray[np.int16]],
+    ):
+        # Handle the audio stream from the client
+        # This is where you would process the incoming audio data
+        num_voiceless_frames_seen = 0
+        frames = bytearray()
+        frame = bytearray()
+        async with asyncio.TaskGroup() as tg:
+            text_q: asyncio.Queue[str] = asyncio.Queue()
+            tg.create_task(text_to_audio(text_q, out_q, tts))
+            with transcriber(stt_model_file, command_runner.grammar) as t:
+                async for audio_chunk in audio_stream:
+                    frame.extend(audio_chunk)
+                    if len(frame) < 1024:
+                        continue
 
-        def on_connection(
-            in_q: mp.Queue[NDArray[np.int16]],
-            out_q: mp.Queue[NDArray[np.int16]],
-            err_q: mp.Queue[Exception],
-        ):
-            message_q = queue.Queue()
-            sender_t = threading.Thread(
-                target=send_audio_message, args=[message_q, tts, out_q], daemon=True
-            )
-            sender_t.start()
-            frames = bytearray()
-            num_voiceless_frames_seen = 0
-            frame = bytearray()
-            while True:
-                incoming_bytes: NDArray[np.int16] = in_q.get()
-                frame.extend(incoming_bytes)
-                if len(frame) < 1024:
-                    continue
+                    audio_bytes = frame[: 1024 * (len(frame) // 1024)]
+                    frame = frame[len(audio_bytes) :]
 
-                audio_bytes = frame[:1024*(len(frame) // 1024)]
-                frame = frame[len(audio_bytes):]
+                    frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
+                    if frame_is_voice:
+                        num_voiceless_frames_seen = 0
+                    else:
+                        num_voiceless_frames_seen += 1
 
-                frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
-                if frame_is_voice:
-                    num_voiceless_frames_seen = 0
-                else:
-                    num_voiceless_frames_seen += 1
+                    if frame_is_voice or (frames and num_voiceless_frames_seen < 5):
+                        frames.extend(audio_bytes)
 
-                if frame_is_voice or (frames and num_voiceless_frames_seen < 5):
-                    frames.extend(audio_bytes)
+                    if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
+                        print('decided to transcribe')
+                        audio_data = (
+                            np.frombuffer(frames, np.int16).astype(np.float32)
+                            / np.iinfo(np.int16).max
+                        )
+                        # Make the audio at least one second long
+                        audio_data = np.concatenate(
+                            (audio_data, np.zeros(16000 + 10)), dtype=np.float32
+                        )
+                        text = t.transcribe(
+                            audio_data,
+                            initial_prompt=command_runner.initial_prompt,
+                            grammar_rule=command_runner.grammar_root,
+                        )
+                        await command_runner.run(text, text_q)
+                        frames = bytearray()
 
-                if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
-                    print('decided to transcribe')
-                    audio_data = (
-                        np.frombuffer(frames, np.int16).astype(np.float32)
-                        / np.iinfo(np.int16).max
-                    )
-                    # Make the audio at least one second long
-                    audio_data = np.concatenate(
-                        (audio_data, np.zeros(16000 + 10)), dtype=np.float32
-                    )
-                    text = t.transcribe(
-                        audio_data,
-                        initial_prompt=command_runner.initial_prompt,
-                        grammar_rule=command_runner.grammar_root,
-                    )
-                    command_runner.run(text, message_q)
-                    frames = bytearray()
+    await serve(
+        handle_client,
+        local_addr,
+        local_port,
+    )
 
-
-        executor = ThreadPoolExecutor()
-        listen_for_clients(
-            local_addr,
-            local_port,
-            cert_file=cert_file,
-            key_file=key_file,
-            conn_cb=on_connection,
-            executor=executor,
-            err_q=mp.Queue(),
-        )
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

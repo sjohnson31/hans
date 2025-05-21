@@ -1,4 +1,4 @@
-from queue import Queue
+import asyncio
 
 from src.commands.command import Command
 from src.commands.groceries.groceries_client import GroceriesClient
@@ -17,8 +17,8 @@ class AddToGroceryListCommand(Command):
     def __init__(self, groceries_client: GroceriesClient):
         self.groceries_client = groceries_client
 
-    def run(
-        self, command_text: str, response_q: Queue[str]
+    async def run(
+        self, command_text: str, response_q: asyncio.Queue[str]
     ) -> bool:
         if not command_text.endswith(' to the grocery list.'):
             return False
@@ -28,5 +28,5 @@ class AddToGroceryListCommand(Command):
         print(f'Adding {item} to the grocery list')
         self.groceries_client.add_to_shopping_list(item)
 
-        response_q.put(f'Added {item}.')
+        await response_q.put(f'Added {item}.')
         return True

@@ -1,5 +1,5 @@
+import asyncio
 import itertools
-import queue
 
 from src.commands.command import Command
 
@@ -26,12 +26,12 @@ class CommandRunner:
             [f'Hey Hans, {example}' for example in examples]
         )
 
-    def run(
+    async def run(
         self,
         command_text: str,
-        message_q: queue.Queue[str],
+        message_q: asyncio.Queue[str],
     ) -> None:
         command_text = command_text.removeprefix('Hey Hans, ')
         for command in self.commands:
-            if command.run(command_text, message_q):
+            if await command.run(command_text, message_q):
                 break

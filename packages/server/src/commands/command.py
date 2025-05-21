@@ -1,4 +1,4 @@
-from queue import Queue
+import asyncio
 from typing import Protocol
 
 
@@ -19,7 +19,7 @@ class Command(Protocol):
     https://github.com/ggerganov/whisper.cpp/blob/cadfc50eabb46829a0d5ac7ffcb3778ad60a1257/include/whisper.h#L516
     """
 
-    def run(self, command_text: str, response_q: Queue[str]) -> bool:
+    async def run(self, command_text: str, response_q: asyncio.Queue[str]) -> bool:
         """
         Execute the command specified in the command_text
 
