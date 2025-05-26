@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from queue import Queue
 
-from src.commands.command import Command
+from server.commands.command import Command
 
 
 @dataclass

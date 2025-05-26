@@ -1,13 +1,17 @@
 import asyncio
 from collections.abc import AsyncIterator
 import os
+import wave
 
 import librosa
 import numpy as np
 from numpy.typing import NDArray
 import sounddevice as sd
-from transport2 import connect_to_server
+from transport2 import AudioSegment, connect_to_server
 
+from src.audio import play_buffer
+
+OUTGOING_SAMPLE_RATE = 16_000
 
 def main():
     asyncio.run(amain())
@@ -26,9 +30,11 @@ async def amain():
         sd.query_devices(input_device, 'input')['default_samplerate']
     )
     loop = asyncio.get_event_loop()
-    input_q: asyncio.Queue[NDArray[np.int16]] = asyncio.Queue()
+    input_q: asyncio.Queue[AudioSegment] = asyncio.Queue()
 
-    async def stream_audio(audio_q: asyncio.Queue[NDArray[np.int16]]) -> AsyncIterator[NDArray[np.int16]]:
+    async def stream_audio(
+        audio_q: asyncio.Queue[AudioSegment],
+    ) -> AsyncIterator[AudioSegment]:
         while True:
             yield await audio_q.get()
 
@@ -36,22 +42,19 @@ async def amain():
         new_sample = librosa.resample(
             in_data,
             orig_sr=input_sample_rate,
-            target_sr=16_000,
+            target_sr=OUTGOING_SAMPLE_RATE,
             res_type='soxr_qq',
             axis=0,
         )
-        resampled = (new_sample * np.iinfo(np.int16).max).astype(np.int16)
-        loop.call_soon_threadsafe(input_q.put_nowait, resampled)
-
-    def play_audio(audio_data: NDArray[np.int16]):
-        sd.play(
-            audio_data,
-            # This is the samplerate coming out of the TTS
-            # TODO: Encode samplerate in transport packet
-            samplerate=48_000,
-            device=output_device,
-            blocking=True,
+        resampled_audio = (new_sample * np.iinfo(np.int16).max).astype(np.int16)
+        segment = AudioSegment(
+            audio=resampled_audio,
+            sample_rate=OUTGOING_SAMPLE_RATE,
         )
+        loop.call_soon_threadsafe(input_q.put_nowait, segment)
+
+    async def play_audio(segment: AudioSegment):
+        await play_buffer(segment.audio, sample_rate=segment.sample_rate)
 
     with sd.InputStream(
         device=input_device,
@@ -59,8 +62,10 @@ async def amain():
         callback=input_cb,
         samplerate=input_sample_rate,
     ):
-        async for audio_chunk in connect_to_server(server_ip, server_port, stream_audio(input_q)):
-            play_audio(audio_chunk)
+        async for audio_chunk in connect_to_server(
+            server_ip, server_port, stream_audio(input_q)
+        ):
+            await play_audio(audio_chunk)
 
 
 if __name__ == '__main__':

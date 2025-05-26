@@ -3,7 +3,7 @@ import queue
 from typing import NoReturn
 
 import numpy as np
-from numpy.typing import NDArray
+from transport2 import AudioSegment
 
 
 def send_audio_message(
@@ -19,7 +19,7 @@ def send_audio_message(
 
 
 async def text_to_audio(
-    text_q: asyncio.Queue[str], audio_q: asyncio.Queue[NDArray[np.int16]], tts
+    text_q: asyncio.Queue[str], audio_q: asyncio.Queue[AudioSegment], tts
 ) -> NoReturn:
     while True:
         text = await text_q.get()
@@ -27,4 +27,4 @@ async def text_to_audio(
         audio_raw = np.array(tts.tts(text=text), dtype=np.float32)
         audio_norm = audio_raw * (32767 / max(0.01, np.max(np.abs(audio_raw))))
         audio_norm_i16 = audio_norm.astype(np.int16)
-        await audio_q.put(audio_norm_i16)
+        await audio_q.put(AudioSegment(audio=audio_norm_i16, sample_rate=48_000))

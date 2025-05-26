@@ -1,35 +1,68 @@
 import asyncio
-from collections.abc import AsyncIterator, Callable
-from typing import NoReturn
+from collections.abc import AsyncIterator, Callable, Coroutine
+from dataclasses import dataclass
+import struct
+from typing import Any, NoReturn
 
 import numpy as np
 from numpy.typing import NDArray
+
+HEADER_FMT = '<LL'
+HEADER_SIZE = struct.calcsize(HEADER_FMT)
 
 
 class DisconnectedError(Exception):
     pass
 
 
+@dataclass
+class AudioSegment:
+    sample_rate: int
+    audio: NDArray[np.int16]
+
+
 async def read_audio_stream(
     reader: asyncio.StreamReader, buffer_size: int = 1024
-) -> AsyncIterator[NDArray[np.int16]]:
+) -> AsyncIterator[AudioSegment]:
+    received_bytes = bytearray()
     while True:
         data = await reader.read(buffer_size)
-        yield np.frombuffer(data, dtype=np.int16)
+        received_bytes.extend(data)
+
+        if len(received_bytes) < HEADER_SIZE:
+            continue
+
+        frame_num_bytes, sample_rate = struct.unpack_from(HEADER_FMT, received_bytes)
+        if (len(received_bytes) - HEADER_SIZE) >= frame_num_bytes:
+            audio_segment = received_bytes[HEADER_SIZE : HEADER_SIZE + frame_num_bytes]
+            received_bytes = received_bytes[HEADER_SIZE + frame_num_bytes :]
+            yield AudioSegment(
+                audio=np.frombuffer(audio_segment, dtype=np.int16),
+                sample_rate=sample_rate,
+            )
+
+
+async def write_audio_segment(
+    writer: asyncio.StreamWriter, audio_segment: AudioSegment
+) -> None:
+    audio_bytes = audio_segment.audio.tobytes()
+    frame = struct.pack(HEADER_FMT, len(audio_bytes), audio_segment.sample_rate)
+    writer.write(frame + audio_bytes)
+    await writer.drain()
 
 
 async def write_audio_stream(
-    writer: asyncio.StreamWriter, audio_stream: AsyncIterator[NDArray[np.int16]]
+    writer: asyncio.StreamWriter, audio_stream: AsyncIterator[AudioSegment]
 ) -> None:
-    async for audio_chunk in audio_stream:
-        writer.write(audio_chunk.tobytes())
-        await writer.drain()
+    async for audio_segment in audio_stream:
+        await write_audio_segment(writer, audio_segment)
+
     raise RuntimeError('Audio stream ended unexpectedly')
 
 
 async def connect_to_server(
-    host: str, port: int, audio_stream: AsyncIterator[NDArray[np.int16]]
-) -> AsyncIterator[NDArray[np.int16]]:
+    host: str, port: int, audio_stream: AsyncIterator[AudioSegment]
+) -> AsyncIterator[AudioSegment]:
     reader, writer = await asyncio.open_connection(host, port)
     async with asyncio.TaskGroup() as tg:
         tg.create_task(write_audio_stream(writer, audio_stream))
@@ -40,17 +73,17 @@ async def connect_to_server(
 
 async def write_queue(
     writer: asyncio.StreamWriter,
-    queue: asyncio.Queue[NDArray[np.int16]],
+    queue: asyncio.Queue[AudioSegment],
 ) -> NoReturn:
     while True:
-        audio_chunk = await queue.get()
-        writer.write(audio_chunk.tobytes())
-        await writer.drain()
+        audio_segment = await queue.get()
+        await write_audio_segment(writer, audio_segment)
 
 
 async def serve(
     handle_client: Callable[
-        [AsyncIterator[NDArray[np.int16]], asyncio.Queue[NDArray[np.int16]]], None
+        [AsyncIterator[AudioSegment], asyncio.Queue[AudioSegment]],
+        Coroutine[Any, Any, None],
     ],
     host: str,
     port: int,
@@ -59,7 +92,7 @@ async def serve(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ):
         async with asyncio.TaskGroup() as tg:
-            write_q = asyncio.Queue[NDArray[np.int16]]()
+            write_q = asyncio.Queue[AudioSegment]()
             tg.create_task(write_queue(writer, write_q))
             tg.create_task(handle_client(read_audio_stream(reader), write_q))
 

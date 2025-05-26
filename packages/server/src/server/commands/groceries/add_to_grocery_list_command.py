@@ -1,7 +1,7 @@
 import asyncio
 
-from src.commands.command import Command
-from src.commands.groceries.groceries_client import GroceriesClient
+from server.commands.command import Command
+from server.commands.groceries.groceries_client import GroceriesClient
 
 
 class AddToGroceryListCommand(Command):

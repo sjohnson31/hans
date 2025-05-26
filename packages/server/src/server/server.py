@@ -5,24 +5,27 @@ import sys
 from typing import NoReturn
 
 import numpy as np
-from numpy.typing import NDArray
 from silero_vad import load_silero_vad
 import torch
-from transport2 import serve
+from transport2 import AudioSegment, serve
 from TTS.api import TTS
 from whisppy import transcriber
 
-from src.command_runner import CommandRunner
-from src.commands.groceries.add_to_grocery_list_command import AddToGroceryListCommand
-from src.commands.groceries.tandoor_groceries_client import TandoorGroceriesClient
-from src.commands.groceries.text_file_groceries_client import TextFileGroceriesClient
-from src.commands.timer_command import TimerCommand
-from src.message_sender import text_to_audio
-from src.voice_detector import VoiceDetector
+from server.command_runner import CommandRunner
+from server.commands.command import Command
+from server.commands.groceries.add_to_grocery_list_command import (
+    AddToGroceryListCommand,
+)
+from server.commands.groceries.tandoor_groceries_client import TandoorGroceriesClient
+from server.commands.groceries.text_file_groceries_client import TextFileGroceriesClient
+from server.commands.timer_command import TimerCommand
+from server.message_sender import text_to_audio
+from server.voice_detector import VoiceDetector
 
 
 def main() -> NoReturn:
     asyncio.run(amain())
+    raise RuntimeError("amain should not return")
 
 
 async def amain() -> NoReturn:
@@ -41,7 +44,7 @@ async def amain() -> NoReturn:
             'environment'
         )
 
-    commands = [TimerCommand()]
+    commands: list[Command] = [TimerCommand()]
 
     if grocery_list_text_file or (tandoor_api_key and tandoor_base_url):
         if grocery_list_text_file:
@@ -60,20 +63,26 @@ async def amain() -> NoReturn:
     tts = TTS(tts_model).to(device)
 
     async def handle_client(
-        audio_stream: AsyncIterator[bytes],
-        out_q: asyncio.Queue[NDArray[np.int16]],
+        audio_stream: AsyncIterator[AudioSegment],
+        out_q: asyncio.Queue[AudioSegment],
     ):
         # Handle the audio stream from the client
         # This is where you would process the incoming audio data
         num_voiceless_frames_seen = 0
         frames = bytearray()
         frame = bytearray()
+
         async with asyncio.TaskGroup() as tg:
             text_q: asyncio.Queue[str] = asyncio.Queue()
             tg.create_task(text_to_audio(text_q, out_q, tts))
             with transcriber(stt_model_file, command_runner.grammar) as t:
                 async for audio_chunk in audio_stream:
-                    frame.extend(audio_chunk)
+                    if audio_chunk.sample_rate != 16000:
+                        raise ValueError(
+                            f'Audio sample rate {audio_chunk.sample_rate} '
+                            f'does not match expected rate of 16000'
+                        )
+                    frame.extend(audio_chunk.audio)
                     if len(frame) < 1024:
                         continue
 

@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 
-from src.commands.command import Command
+from server.commands.command import Command
 
 
 class CommandRunner:

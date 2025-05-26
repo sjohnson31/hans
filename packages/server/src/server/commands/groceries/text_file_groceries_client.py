@@ -1,6 +1,6 @@
 import os
 
-from src.commands.groceries.groceries_client import GroceriesClient
+from server.commands.groceries.groceries_client import GroceriesClient
 
 
 class TextFileGroceriesClient(GroceriesClient):

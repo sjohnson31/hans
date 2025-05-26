@@ -2,7 +2,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from src.commands.groceries.groceries_client import GroceriesClient
+from server.commands.groceries.groceries_client import GroceriesClient
 
 
 class TandoorGroceriesClient(GroceriesClient):

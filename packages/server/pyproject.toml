@@ -27,8 +27,8 @@ build-backend = "hatchling.build"
 # These should be globally unique, because all package scripts end up
 # in the same place in the venv
 [project.scripts]
-hans_server = "server:main"
+hans_server = "server.server:main"
 
 #TODO: This is definitely wrong when building a non-editable wheel
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src/server"]

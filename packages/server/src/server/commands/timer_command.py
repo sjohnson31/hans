@@ -4,7 +4,7 @@ from datetime import datetime
 from durations_nlp import Duration
 from durations_nlp.exceptions import ScaleFormatError
 
-from src.commands.command import Command
+from server.commands.command import Command
 
 
 def _make_duration_string(duration: Duration) -> str:
