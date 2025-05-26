@@ -4,7 +4,7 @@ import os
 import sys
 from typing import NoReturn
 
-from audio_debugger.audio_debugger import AudioDebugger
+#from audio_debugger.audio_debugger import AudioDebugger, DebugMode
 import numpy as np
 from silero_vad import load_silero_vad
 import torch
@@ -69,23 +69,23 @@ async def amain() -> NoReturn:
     ):
         # Handle the audio stream from the client
         # This is where you would process the incoming audio data
-        num_voiceless_frames_seen = 0
+        seconds_of_voiceless_frames = 0
         frames = bytearray()
         frame = bytearray()
-        # audio_debugger = AudioDebugger()
+        #audio_debugger = AudioDebugger(mode=DebugMode.SAVE)
 
         async with asyncio.TaskGroup() as tg:
             text_q: asyncio.Queue[str] = asyncio.Queue()
             tg.create_task(text_to_audio(text_q, out_q, tts))
             with transcriber(stt_model_file, command_runner.grammar) as t:
                 async for audio_chunk in audio_stream:
-                    # audio_debugger.append(audio_chunk.audio.tobytes())
+                    #audio_debugger.append(audio_chunk.audio.tobytes())
                     if audio_chunk.sample_rate != 16000:
                         raise ValueError(
                             f'Audio sample rate {audio_chunk.sample_rate} '
                             f'does not match expected rate of 16000'
                         )
-                    frame.extend(audio_chunk.audio)
+                    frame.extend(audio_chunk.audio.tobytes())
                     if len(frame) < 1024:
                         continue
 
@@ -95,14 +95,14 @@ async def amain() -> NoReturn:
                     frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
                     if frame_is_voice:
                         print('voice frame detected')
-                        num_voiceless_frames_seen = 0
+                        seconds_of_voiceless_frames = 0
                     else:
-                        num_voiceless_frames_seen += 1
+                        seconds_of_voiceless_frames += (len(audio_bytes) / 2.0) / 16000.0
 
-                    if frame_is_voice or (frames and num_voiceless_frames_seen < 5):
+                    if frame_is_voice or (frames and seconds_of_voiceless_frames < 2):
                         frames.extend(audio_bytes)
 
-                    if not frame_is_voice and num_voiceless_frames_seen > 5 and frames:
+                    if not frame_is_voice and seconds_of_voiceless_frames > 2 and frames:
                         print('decided to transcribe')
                         audio_data = (
                             np.frombuffer(frames, np.int16).astype(np.float32)
