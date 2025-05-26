@@ -28,6 +28,8 @@ async def play_buffer(
         outdata[valid_frames:] = 0
         idx += valid_frames
 
+    if buffer.ndim == 1:
+        buffer = buffer.reshape(buffer.shape[0], 1)
     stream = sd.OutputStream(
         callback=callback,
         dtype=buffer.dtype,
