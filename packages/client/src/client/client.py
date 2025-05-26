@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 import sounddevice as sd
 from transport.transport import AudioSegment, connect_to_server
 
-from src.audio import play_buffer
+from client.audio import play_buffer
 
 OUTGOING_SAMPLE_RATE = 16_000
 
