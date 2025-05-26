@@ -4,10 +4,8 @@ from dataclasses import dataclass
 import struct
 from typing import Any, NoReturn
 
-from librosa import ex
 import numpy as np
 from numpy.typing import NDArray
-from regex import T
 
 from transport.retry import retry_iterator_with_backoff, retry_with_backoff
 
