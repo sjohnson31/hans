@@ -9,10 +9,12 @@ dependencies = [
     "numpy>=1.19",
     "sounddevice>=0.5.1",
     "transport",
+    "audio_debugger",
 ]
 
 [tool.uv.sources]
 transport = { workspace = true }
+audio_debugger = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

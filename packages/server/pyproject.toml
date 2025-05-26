@@ -14,11 +14,13 @@ dependencies = [
     "whisppy",
     "transport",
     "httpx>=0.28.1",
+    "audio_debugger",
 ]
 
 [tool.uv.sources]
 whisppy = { workspace = true }
 transport = { workspace = true }
+audio_debugger = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
@@ -29,6 +31,5 @@ build-backend = "hatchling.build"
 [project.scripts]
 hans_server = "server.server:main"
 
-#TODO: This is definitely wrong when building a non-editable wheel
 [tool.hatch.build.targets.wheel]
 packages = ["src/server"]

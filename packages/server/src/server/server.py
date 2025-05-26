@@ -4,10 +4,11 @@ import os
 import sys
 from typing import NoReturn
 
+from audio_debugger.audio_debugger import AudioDebugger
 import numpy as np
 from silero_vad import load_silero_vad
 import torch
-from transport2 import AudioSegment, serve
+from transport.transport import AudioSegment, serve
 from TTS.api import TTS
 from whisppy import transcriber
 
@@ -71,12 +72,14 @@ async def amain() -> NoReturn:
         num_voiceless_frames_seen = 0
         frames = bytearray()
         frame = bytearray()
+        # audio_debugger = AudioDebugger()
 
         async with asyncio.TaskGroup() as tg:
             text_q: asyncio.Queue[str] = asyncio.Queue()
             tg.create_task(text_to_audio(text_q, out_q, tts))
             with transcriber(stt_model_file, command_runner.grammar) as t:
                 async for audio_chunk in audio_stream:
+                    # audio_debugger.append(audio_chunk.audio.tobytes())
                     if audio_chunk.sample_rate != 16000:
                         raise ValueError(
                             f'Audio sample rate {audio_chunk.sample_rate} '
@@ -91,6 +94,7 @@ async def amain() -> NoReturn:
 
                     frame_is_voice = voice_detector.big_chunk_is_voice(audio_bytes)
                     if frame_is_voice:
+                        print('voice frame detected')
                         num_voiceless_frames_seen = 0
                     else:
                         num_voiceless_frames_seen += 1

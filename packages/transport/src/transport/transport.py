@@ -4,8 +4,12 @@ from dataclasses import dataclass
 import struct
 from typing import Any, NoReturn
 
+from librosa import ex
 import numpy as np
 from numpy.typing import NDArray
+from regex import T
+
+from transport.retry import retry_iterator_with_backoff, retry_with_backoff
 
 HEADER_FMT = '<LL'
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
@@ -54,21 +58,45 @@ async def write_audio_segment(
 async def write_audio_stream(
     writer: asyncio.StreamWriter, audio_stream: AsyncIterator[AudioSegment]
 ) -> None:
-    async for audio_segment in audio_stream:
-        await write_audio_segment(writer, audio_segment)
+    try:
+        async for audio_segment in audio_stream:
+            await write_audio_segment(writer, audio_segment)
+    except Exception as e:
+        print(f"in writeaudio {e}")
 
+    print("Audio stream ended, closing writer")
     raise RuntimeError('Audio stream ended unexpectedly')
 
 
 async def connect_to_server(
+    host: str,
+    port: int,
+    audio_stream: AsyncIterator[AudioSegment],
+) -> AsyncIterator[AudioSegment]:
+    async for audio_chunk in retry_iterator_with_backoff(
+        func=_connect_to_server_once,
+        host=host,
+        port=port,
+        audio_stream=audio_stream,
+    ):
+        yield audio_chunk
+
+
+async def _connect_to_server_once(
     host: str, port: int, audio_stream: AsyncIterator[AudioSegment]
 ) -> AsyncIterator[AudioSegment]:
     reader, writer = await asyncio.open_connection(host, port)
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(write_audio_stream(writer, audio_stream))
-        async for audio_chunk in read_audio_stream(reader):
-            yield audio_chunk
-        raise DisconnectedError()
+    print("Connected to server at", (host, port))
+    try:
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(write_audio_stream(writer, audio_stream))
+            async for audio_chunk in read_audio_stream(reader):
+                yield audio_chunk
+            raise DisconnectedError()
+    except Exception as e:
+        print(e)
+        writer.close()
+        await writer.wait_closed()
 
 
 async def write_queue(
@@ -81,6 +109,17 @@ async def write_queue(
 
 
 async def serve(
+    handle_client: Callable[
+        [AsyncIterator[AudioSegment], asyncio.Queue[AudioSegment]],
+        Coroutine[Any, Any, None],
+    ],
+    host: str,
+    port: int,
+) -> NoReturn:
+    await retry_with_backoff(_serve_once, handle_client, host, port)
+    raise RuntimeError('Gave up serving, should not happen')
+
+async def _serve_once(
     handle_client: Callable[
         [AsyncIterator[AudioSegment], asyncio.Queue[AudioSegment]],
         Coroutine[Any, Any, None],

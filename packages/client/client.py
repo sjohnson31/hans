@@ -1,17 +1,18 @@
 import asyncio
 from collections.abc import AsyncIterator
 import os
-import wave
 
+from audio_debugger.audio_debugger import AudioDebugger
 import librosa
 import numpy as np
 from numpy.typing import NDArray
 import sounddevice as sd
-from transport2 import AudioSegment, connect_to_server
+from transport.transport import AudioSegment, connect_to_server
 
 from src.audio import play_buffer
 
 OUTGOING_SAMPLE_RATE = 16_000
+
 
 def main():
     asyncio.run(amain())
@@ -38,7 +39,12 @@ async def amain():
         while True:
             yield await audio_q.get()
 
+    # before_audio_debugger = AudioDebugger(sample_rate=input_sample_rate, dtype=np.float32)
+    after_audio_debugger = AudioDebugger(
+        sample_rate=OUTGOING_SAMPLE_RATE, dtype=np.int16
+    )
     def input_cb(in_data: NDArray[np.float32], *_):
+        # before_audio_debugger.append(in_data.tobytes())
         new_sample = librosa.resample(
             in_data,
             orig_sr=input_sample_rate,
@@ -47,6 +53,7 @@ async def amain():
             axis=0,
         )
         resampled_audio = (new_sample * np.iinfo(np.int16).max).astype(np.int16)
+        after_audio_debugger.append(resampled_audio.tobytes())
         segment = AudioSegment(
             audio=resampled_audio,
             sample_rate=OUTGOING_SAMPLE_RATE,
@@ -54,7 +61,9 @@ async def amain():
         loop.call_soon_threadsafe(input_q.put_nowait, segment)
 
     async def play_audio(segment: AudioSegment):
-        await play_buffer(segment.audio, sample_rate=segment.sample_rate)
+        await play_buffer(
+            segment.audio, sample_rate=segment.sample_rate, output_device=output_device
+        )
 
     with sd.InputStream(
         device=input_device,

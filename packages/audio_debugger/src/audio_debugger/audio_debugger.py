@@ -16,10 +16,10 @@ class DebugMode(Enum):
 class AudioDebugger:
     def __init__(
         self,
-        playback_seconds=5,
+        playback_seconds: float=5,
         sample_rate: int = 16_000,
         dtype: DTypeLike = np.int16,
-        mode=DebugMode.PLAYBACK,
+        mode: DebugMode=DebugMode.PLAYBACK,
     ):
         self.playback_seconds = playback_seconds
         self.sample_rate = sample_rate
